@@ -6,7 +6,6 @@ namespace Server.DbContext
 {
     public class RegisteredChat {
         [Key]
-        [ForeignKey("Master")]
         public int MasterId { get; set; }
         [Key]
         public long ChatId { get; set; }

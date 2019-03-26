@@ -18,6 +18,19 @@ namespace Server.TelegramController
     
     public class Controller : TelegramController<MasterContext>
     {
+
+        [CommandFilter("list"), ChatTypeFilter(ChatType.Private), MessageTypeFilter(MessageType.Text)]
+        public async Task ListMasters() {
+            Console.WriteLine("Ricevuto comando /list");
+            var masters = TelegramContext.Masters.Where(m => m.UserId == TelegramChat.Id).Select(m => m.Name);
+            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                "<b>Lista dei tuoi Master:</b>\n" +
+                string.Join("\n", masters),
+                ParseMode.Html);
+            Console.WriteLine("Ricevuto comando /list");
+        }
+        
+        
         [CommandFilter("add"), ChatTypeFilter(ChatType.Private), MessageTypeFilter(MessageType.Text)]
         public async Task Add() {
             Console.WriteLine("Ricevuto comando /add");
@@ -42,11 +55,11 @@ namespace Server.TelegramController
 
         [ChatStateFilter((int) ConversationState.Nome), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetNome() {
-            Console.WriteLine($"Nome ricevuto da @{TelegramChat?.Username}: {Update.Message.Text}");
+            Console.WriteLine($"Nome ricevuto da @{TelegramChat?.Username}: {MessageCommand.Message}");
             if (TelegramChat != null) {
-                if (CheckName(Update.Message.Text)) {
+                if (CheckName(MessageCommand.Message)) {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, adesso inviami il friend code in formato XXXXXXXXX");
-                    TelegramChat["nome"] = Update.Message.Text;
+                    TelegramChat["nome"] = MessageCommand.Message;
                     TelegramChat.State = (int)ConversationState.FriendCode;
                 }
                 else {
@@ -227,13 +240,23 @@ namespace Server.TelegramController
                         "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
                 }
                 else {
-                    if (master.ServantList != null)
+                    if (master.ServantList != null && master.SupportList != null) {
+                        await BotData.Bot.SendMediaGroupAsync(new[] {
+                                new InputMediaPhoto(new InputMedia(master.ServantList)),
+                                new InputMediaPhoto(new InputMedia(master.SupportList))
+                            },
+                            TelegramChat.Id);
+                    }
+                    else if (master.ServantList != null) {
                         await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.ServantList));
-                    if (master.SupportList != null)
+                    }
+                    else if (master.SupportList != null) {
                         await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
+                    }
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, 
                         $"<b>Master:</b> {master.Name}\n" +
                         $"<b>Friend Code:</b> {master.FriendCode}\n" +
+                        $"<b>Server:</b> {master.Server.ToString()}\n" +
                         $"<b>Registrato da:</b> <a href=\"tg://user?id={master.UserId}\">@{master.User.Username}</a>\n",
                         ParseMode.Html);
                 }

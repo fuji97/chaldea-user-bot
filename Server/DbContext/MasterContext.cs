@@ -5,7 +5,7 @@ using Telegram.Bot.Advanced.DbContexts;
 namespace Server.DbContext
 {
     public class MasterContext : TelegramContext {
-        public MasterContext(DbContextOptions<MasterContext> options)
+        public MasterContext(DbContextOptions<TelegramContext> options)
             : base(options)
         { }
         

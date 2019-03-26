@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Server.DbContext;
 using Telegram.Bot.Advanced;
@@ -21,23 +22,25 @@ using Controller = Server.TelegramController.Controller;
 namespace Server {
     public class Startup {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<Dispatcher<MasterContext, Controller>> _logger;
 
-        public Startup(IConfiguration configuration) {
+        public Startup(IConfiguration configuration, ILogger<Dispatcher<MasterContext,Controller>> logger) {
             _configuration = configuration;
+            _logger = logger;
         }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services) {
-            services.AddDbContext<MasterContext>( // replace "YourDbContext" with the class name of your DbContext
-                options => options.UseMySql(_configuration["ConnectionString"], // replace with your Connection String
+            services.AddDbContext<MasterContext>(
+                options => options.UseMySql(_configuration["ConnectionString"],
                     mySqlOptions =>
                     {
-                        mySqlOptions.ServerVersion(new Version(8, 0, 15), ServerType.MySql); // replace with your Server Version and Type
+                        mySqlOptions.ServerVersion(new Version(10, 1, 23), ServerType.MariaDb);
                     }
                 ));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
-                .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
+                .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>().SetLogger(_logger))
                 .CreateTelegramBotClient(_configuration["BOT_KEY"])
                 .SetBasePath(_configuration["BasePath"])
                 .Build()
@@ -50,9 +53,12 @@ namespace Server {
         public void Configure(IApplicationBuilder app, IHostingEnvironment env) {
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
+                app.UseTelegramPolling();
+            }
+            else {
+                app.UseTelegramRouting();
             }
 
-            app.UseTelegramRouting();
             app.UseMvc();
         }
     }
