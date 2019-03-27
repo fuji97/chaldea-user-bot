@@ -1,19 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.DbContexts;
 
 namespace Server.DbContext
 {
     public class MasterContext : TelegramContext {
-        public MasterContext(DbContextOptions<TelegramContext> options)
-            : base(options)
-        { }
-        
-        public MasterContext() {}
+        private readonly IConfiguration _configuration;
+
+        public MasterContext(IConfiguration configuration) {
+            _configuration = configuration;
+        }
+
+        public MasterContext() {
+        }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseMySql("Server=localhost;Database=chaldeabot;User=test;Password=test;");
+            optionsBuilder.UseMySql(_configuration["ConnectionString"]);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {

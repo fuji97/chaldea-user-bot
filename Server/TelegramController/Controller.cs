@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.Extensions.Logging;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.DbContexts;
@@ -16,38 +17,57 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace Server.TelegramController
 {
     
-    public class Controller : TelegramController<MasterContext>
-    {
+    public class Controller : TelegramController<MasterContext> {
+        private readonly ILogger<Controller> _logger;
+
+        public Controller(ILogger<Controller> logger) {
+            _logger = logger;
+        }
+
+        public Controller() {
+        }
+
 
         [CommandFilter("list"), ChatTypeFilter(ChatType.Private), MessageTypeFilter(MessageType.Text)]
         public async Task ListMasters() {
-            Console.WriteLine("Ricevuto comando /list");
+            _logger.LogInformation("Ricevuto comando /list");
             var masters = TelegramContext.Masters.Where(m => m.UserId == TelegramChat.Id).Select(m => m.Name);
             await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                 "<b>Lista dei tuoi Master:</b>\n" +
                 string.Join("\n", masters),
                 ParseMode.Html);
-            Console.WriteLine("Ricevuto comando /list");
+            _logger.LogInformation("Ricevuto comando /list");
         }
         
         
         [CommandFilter("add"), ChatTypeFilter(ChatType.Private), MessageTypeFilter(MessageType.Text)]
         public async Task Add() {
-            Console.WriteLine("Ricevuto comando /add");
+            _logger.LogInformation("Ricevuto comando /add");
             if (MessageCommand.Parameters.Count < 1) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, inviami il nome che vuoi usare");
                 TelegramChat.State = (int) ConversationState.Nome;
+                if (SaveChanges()) {
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, inviami il nome che vuoi usare");
+                }
+                else {
+                    await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                }
             }
             else {
-                if (CheckName(MessageCommand.Parameters.Join(" "))) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Ok, inviami il friend code in formato XXXXXXXXX");
+                if (CheckName(MessageCommand.Message)) {
+                    
                     TelegramChat.State = (int) ConversationState.FriendCode;
-                    TelegramChat["nome"] = MessageCommand.Parameters.Join(" ");
+                    TelegramChat["nome"] = MessageCommand.Message;
+                    if (SaveChanges()) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                            "Ok, inviami il friend code in formato XXXXXXXXX");
+                    }
+                    else {
+                        await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                    }
                 }
                 else {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Nome già in uso, sceglierne un altro");
+                        "Nome invalido o già in uso, sceglierne un altro");
                 }
 
             }
@@ -55,41 +75,53 @@ namespace Server.TelegramController
 
         [ChatStateFilter((int) ConversationState.Nome), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetNome() {
-            Console.WriteLine($"Nome ricevuto da @{TelegramChat?.Username}: {MessageCommand.Message}");
+            _logger.LogInformation($"Nome ricevuto da @{TelegramChat?.Username}: {MessageCommand.Text}");
             if (TelegramChat != null) {
-                if (CheckName(MessageCommand.Message)) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, adesso inviami il friend code in formato XXXXXXXXX");
-                    TelegramChat["nome"] = MessageCommand.Message;
+                if (CheckName(MessageCommand.Text)) {
+                    TelegramChat["nome"] = MessageCommand.Text;
                     TelegramChat.State = (int)ConversationState.FriendCode;
+                    if (SaveChanges()) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, adesso inviami il friend code in formato XXXXXXXXX");
+                    }
+                    else {
+                        await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                    }
                 }
                 else {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Nome già in uso, sceglierne un altro");
+                        "Nome invalido o già in uso, sceglierne un altro");
                 }
                 
             }
         }
 
         private bool CheckName(string messageText) {
+            if (string.IsNullOrEmpty(messageText))
+                return false;
             return !TelegramContext.Masters.Any(m => m.Name == messageText);
         }
 
         [ChatStateFilter((int) ConversationState.FriendCode), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetFriendCode() {
-            Console.WriteLine($"Ricevuto friend code: {Update.Message.Text}");
+            _logger.LogInformation($"Ricevuto friend code: {Update.Message.Text}");
             if (Regex.IsMatch(Update.Message.Text, @"^\d{5}")) {
-                await BotData.Bot.SendTextMessageAsync(
-                    TelegramChat.Id,
-                    $"E' stato impostato come friend code: '{Update.Message.Text}'. Sarà possibile cambiarlo in seguito.\n" +
-                    $"Ora inviami il server di appartenenza del Master, 'JP' o 'US' (puoi usare la tastiera automatica)",
-                    replyMarkup: new ReplyKeyboardMarkup() {
-                        Keyboard = new[] {
-                            new[] {new KeyboardButton ("JP")},
-                            new[] {new KeyboardButton ("US")}
-                        }
-                    });
                 TelegramChat["friend_code"] = Update.Message.Text;
                 TelegramChat.State = (int) ConversationState.Server;
+                if (SaveChanges()) {
+                    await BotData.Bot.SendTextMessageAsync(
+                        TelegramChat.Id,
+                        $"E' stato impostato come friend code: '{Update.Message.Text}'. Sarà possibile cambiarlo in seguito.\n" +
+                        $"Ora inviami il server di appartenenza del Master, 'JP' o 'US' (puoi usare la tastiera automatica)",
+                        replyMarkup: new ReplyKeyboardMarkup() {
+                            Keyboard = new[] {
+                                new[] {new KeyboardButton ("JP")},
+                                new[] {new KeyboardButton ("US")}
+                            }
+                        });
+                }
+                else {
+                    await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                }
             }
             else
             {
@@ -102,19 +134,31 @@ namespace Server.TelegramController
         [ChatStateFilter((int)ConversationState.Server), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetServer()
         {
-            Console.WriteLine($"Ricevuto server {Update.Message.Text}");
+            _logger.LogInformation($"Ricevuto server {Update.Message.Text}");
             switch (Update.Message.Text) {
                 case "JP":
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
-                        replyMarkup: new ReplyKeyboardRemove());
+                    
                     TelegramChat["server"] = ((int) MasterServer.JP).ToString();
                     TelegramChat.State = (int) ConversationState.SupportList;
+                    if (SaveChanges()) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                            replyMarkup: new ReplyKeyboardRemove());
+                    }
+                    else {
+                        await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                    }
                     break;
                 case "US":
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
-                        replyMarkup: new ReplyKeyboardRemove());
+                    
                     TelegramChat["server"] = ((int)MasterServer.US).ToString();
                     TelegramChat.State = (int)ConversationState.SupportList;
+                    if (SaveChanges()) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                            replyMarkup: new ReplyKeyboardRemove());
+                    }
+                    else {
+                        await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                    }
                     break;
                 default:
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server non valido, specificare 'JP' o 'US'");
@@ -124,40 +168,60 @@ namespace Server.TelegramController
 
         [ChatStateFilter((int) ConversationState.SupportList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
         public async Task SkipSupportList() {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della support list\nOra inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
             TelegramChat["support_photo"] = null;
             TelegramChat.State = (int) ConversationState.ServantList;
+            if (SaveChanges()) {
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della support list\nOra inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+            }
+            else {
+                await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+            }
         }
 
         [ChatStateFilter((int) ConversationState.SupportList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
         public async Task SupportList()
         {
-            Console.WriteLine("Ricevuta foto");
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+            _logger.LogInformation("Ricevuta foto");
             TelegramChat["support_photo"] = Update.Message.Photo[0].FileId;
             TelegramChat.State = (int) ConversationState.ServantList;
+            if (SaveChanges()) {
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+            }
+            else {
+                await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+            }
         }
         
         [ChatStateFilter((int)ConversationState.ServantList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
         public async Task ServantList()
         {
-            Console.WriteLine("Ricevuta foto, creazione Master e inserimento");
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, Master creato\nOra lo puoi collevare alle varie chat con il comando \\link " + TelegramChat["nome"]);
+            _logger.LogInformation("Ricevuta foto, creazione Master e inserimento");
             var master = new Master(TelegramChat, TelegramChat["nome"], TelegramChat["friend_code"], (MasterServer) Int32.Parse(TelegramChat["server"]), TelegramChat["support_photo"],
                 Update.Message.Photo[0].FileId);
             TelegramContext.Add(master);
             TelegramChat.State = (int)ConversationState.Idle;
             TelegramChat.Data.Clear();
+            if (SaveChanges()) {
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, Master creato\nOra lo puoi collevare alle varie chat con il comando \\link " + TelegramChat["nome"]);
+            }
+            else {
+                await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+            }
         }
         
         [ChatStateFilter((int) ConversationState.ServantList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
         public async Task SkipServantList() {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della servant list\nOk, Master creato\nOra lo puoi collevare alle varie chat con il comando \\link " + TelegramChat["nome"]);
             var master = new Master(TelegramChat, TelegramChat["nome"], TelegramChat["friend_code"], (MasterServer) Int32.Parse(TelegramChat["server"]), TelegramChat["support_photo"],
                 null);
             TelegramContext.Add(master);
             TelegramChat.State = (int)ConversationState.Idle;
             TelegramChat.Data.Clear();
+            if (SaveChanges()) {
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della servant list\nOk, Master creato\nOra lo puoi collevare alle varie chat con il comando \\link " + TelegramChat["nome"]);
+            }
+            else {
+                await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+            }
         }
 
         [CommandFilter("remove"), ChatTypeFilter(ChatType.Private)]
@@ -180,15 +244,18 @@ namespace Server.TelegramController
                     }
 
                     TelegramContext.Masters.Remove(master);
-                    
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Master cancellato correttamente");
+                    if (SaveChanges()) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                            "Master cancellato correttamente");                    }
+                    else {
+                        await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                    }
                 }
 
             }
         }
 
-        [CommandFilter("link"), ChatTypeFilter(ChatType.Group)]
+        [CommandFilter("link"), ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
         public async Task LinkMaster() {
             if (MessageCommand.Parameters.Count < 1) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
@@ -208,8 +275,12 @@ namespace Server.TelegramController
 
                     if (chat == null) {
                         TelegramContext.RegisteredChats.Add(new RegisteredChat(master.Id, TelegramChat.Id));
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                            "Master collegato correttamente"); 
+                        if (SaveChanges()) {
+                            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                                "Master collegato correttamente");                    }
+                        else {
+                            await ReplyTextMessageAsync("Errore nel salvare i dati, provare a reinviare l' ultimo messaggio");
+                        }
                     }
                     else {
                         await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
@@ -219,13 +290,7 @@ namespace Server.TelegramController
             }
         }
 
-        // Needed to use multiple ChatType
-        [CommandFilter("link"), ChatTypeFilter(ChatType.Supergroup)]
-        public async Task LinkMasterSuperGroup() {
-            await LinkMaster();
-        }
-        
-        [CommandFilter("master"), ChatTypeFilter(ChatType.Group)]
+        [CommandFilter("master"), ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
         public async Task ShowMaster() {
             if (MessageCommand.Parameters.Count < 1) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
@@ -234,7 +299,7 @@ namespace Server.TelegramController
             else {
                 var master = TelegramContext.Masters
                     .Include(m => m.RegisteredChats)
-                    .Include(m => m.User).SingleOrDefault(m =>m.Name == MessageCommand.Parameters.Join(" "));
+                    .Include(m => m.User).SingleOrDefault(m => m.Name == MessageCommand.Parameters.Join(" "));
                 if (master == null || master.RegisteredChats.All(c => c.ChatId != TelegramChat.Id)) {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                         "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
@@ -253,7 +318,8 @@ namespace Server.TelegramController
                     else if (master.SupportList != null) {
                         await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
                     }
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, 
+
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                         $"<b>Master:</b> {master.Name}\n" +
                         $"<b>Friend Code:</b> {master.FriendCode}\n" +
                         $"<b>Server:</b> {master.Server.ToString()}\n" +
@@ -263,9 +329,25 @@ namespace Server.TelegramController
             }
         }
 
-        [CommandFilter("master"), ChatTypeFilter(ChatType.Supergroup)]
-        public async Task ShowMasterSupergroup() {
-            await ShowMaster();
+        private bool SaveChanges() {
+            bool error = false;
+                try
+                {
+                    // save data
+                    TelegramContext.SaveChanges();
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogError(ex.Message);
+                    error = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                    // quit if a severe error occurred
+                    throw;
+                }
+            return !error;
         }
     }
 
