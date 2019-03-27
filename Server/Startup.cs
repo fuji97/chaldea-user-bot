@@ -40,7 +40,7 @@ namespace Server {
                     }
                 ));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
-                .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>().SetLogger(_logger))
+                .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
                 .CreateTelegramBotClient(_configuration["BOT_KEY"])
                 .SetBasePath(_configuration["BasePath"])
                 .Build()
