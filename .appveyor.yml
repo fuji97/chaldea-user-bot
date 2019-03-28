@@ -26,5 +26,5 @@ deploy:
   password:
     secure: I1pKid48elFrf3DLb9Bg9g==
   folder: dotnet/chaldeabot
-    on:
-      branch: master
+  on:
+    branch: master
