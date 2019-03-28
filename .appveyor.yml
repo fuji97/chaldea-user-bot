@@ -25,6 +25,6 @@ deploy:
   username: www-user
   password:
     secure: I1pKid48elFrf3DLb9Bg9g==
-  folder: /var/www/dotnet/chaldeabot
+  folder: dotnet/chaldeabot
     on:
       branch: master
