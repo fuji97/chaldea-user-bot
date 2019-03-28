@@ -10,7 +10,7 @@ before_build:
   - nuget restore ChaldeaBot.sln
 
 build:
-  project: Server.sln
+  project: ChaldeaBot.sln
   publish_nuget: false
   publish_nuget_symbols: false
   verbosity: normal
