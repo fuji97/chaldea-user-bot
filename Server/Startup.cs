@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Server.DbContext;
+using Telegram.Bot;
 using Telegram.Bot.Advanced;
 using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Dispatcher;
@@ -56,9 +57,7 @@ namespace Server {
                 app.UseTelegramPolling();
             }
             else {
-                app.UseTelegramRouting(new TelegramRoutingOptions() {
-                    WebhookBaseUrl = _configuration["BaseUrl"]
-                });
+                app.UseTelegramRouting();
             }
 
             app.UseMvc();

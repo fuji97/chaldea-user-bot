@@ -22,7 +22,7 @@ namespace Server.Controllers {
         public async Task<IActionResult> Index() {
             List<string> webhooks = new List<string>();
             foreach (var bot in _holder) {
-                await bot.Bot.SetWebhookAsync("https://fuji-skyline.ddns.net" + _configuration["BasePath"] +
+                await bot.Bot.SetWebhookAsync(_configuration["BaseUrl"] + _configuration["BasePath"] +
                                               bot.Endpoint);
                 webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
             }
