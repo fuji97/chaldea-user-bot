@@ -41,7 +41,7 @@ namespace Server {
                 ));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
                 .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
-                .CreateTelegramBotClient(_configuration["BOT_KEY"])
+                .CreateTelegramBotClient(_configuration["BotKey"])
                 .SetBasePath(_configuration["BasePath"])
                 .Build()
             );
@@ -56,7 +56,9 @@ namespace Server {
                 app.UseTelegramPolling();
             }
             else {
-                app.UseTelegramRouting();
+                app.UseTelegramRouting(new TelegramRoutingOptions() {
+                    WebhookBaseUrl = _configuration["BaseUrl"]
+                });
             }
 
             app.UseMvc();

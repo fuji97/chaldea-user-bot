@@ -1,0 +1,30 @@
+version: 1.0.{build}
+image: Visual Studio 2017
+configuration: Debug
+
+branches:
+  only:
+    - master
+
+before_build:
+  - nuget restore ChaldeaBot.sln
+
+build:
+  project: Server.sln
+  publish_nuget: false
+  publish_nuget_symbols: false
+  verbosity: normal
+
+nuget:
+  disable_publish_on_pr: true
+
+deploy:
+  provider: FTP
+  protocol: ftp
+  host: fuji-skyline.ddns.net
+  username: www-user
+  password:
+    secure: I1pKid48elFrf3DLb9Bg9g==
+  folder: /var/www/dotnet/chaldeabot
+    on:
+      branch: master
