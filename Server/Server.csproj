@@ -13,4 +13,8 @@
         <PackageReference Include="Telegram.Bot.Advanced" Version="1.0.6" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\DataScraper\DataScraper.csproj" />
+    </ItemGroup>
+
 </Project>

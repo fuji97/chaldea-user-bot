@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using DataScraper;
+using DataScraper.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
@@ -379,6 +381,10 @@ namespace Server.TelegramController
             master.ServantList = Update.Message.Photo[0].FileId;
             TelegramChat.State = (int) ConversationState.Idle;
             if (await SaveChanges()) {
+                foreach (var chat in master.RegisteredChats) {
+                    await BotData.Bot.SendTextMessageAsync(chat.ChatId,
+                        $"<i>La Servant list del Master {master.Name} è stata aggiornata</i>", ParseMode.Html);
+                }
                 await ReplyTextMessageAsync("Aggiornamento della lista dei servant completato correttamente");
             }
         }
@@ -441,6 +447,10 @@ namespace Server.TelegramController
             master.SupportList = Update.Message.Photo[0].FileId;
             TelegramChat.State = (int) ConversationState.Idle;
             if (await SaveChanges()) {
+                foreach (var chat in master.RegisteredChats) {
+                    await BotData.Bot.SendTextMessageAsync(chat.ChatId,
+                        $"<i>La Support list del Master {master.Name} è stata aggiornata</i>", ParseMode.Html);
+                }
                 await ReplyTextMessageAsync("Aggiornamento della lista dei support avvenuto correttamente");
             }
         }
@@ -485,6 +495,27 @@ namespace Server.TelegramController
 
             if (await SaveChanges("Reset Impossibile, contattate un admin di Chaldea per avere supporto diretto")) {
                 await ReplyTextMessageAsync("Reset completato con successo");
+            }
+        }
+
+        [CommandFilter("servant"), ParametersFilter(1)]
+        public async Task GetServant() {
+            var scraper = new Scraper();
+            var servants = scraper.GetAllServants();
+            var servant = servants.FirstOrDefault(x => x.Name == MessageCommand.Parameters[0]);
+            if (servant != null) {
+                await ReplyTextMessageAsync($"<b>{servant.Name}</b>\n" +
+                                      $"{servant.Class} [{servant.Stars}★]\n" +
+                                      $"ATK: {servant.BaseAttack}/{servant.MaxAttack}\n" +
+                                      $"HP: {servant.BaseHp}/{servant.MaxHp}\n" +
+                                      $"Cards (Q/A/B): ({servant.Cards[AttackType.Quick]}/{servant.Cards[AttackType.Arts]}/{servant.Cards[AttackType.Buster]})\n" +
+                                      $"Noble Phantasm: {servant.NpType}\n\n" +
+                                      $"Commenti: {servant.Comments}\n\n" +
+                                      $"<a href='{servant.ServantUrl}'>{servant.Name} su Cirnopedia</a>",
+                    ParseMode.Html, true);
+            }
+            else {
+                await ReplyTextMessageAsync("Servant non trovato");
             }
         }
 
