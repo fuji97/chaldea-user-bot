@@ -368,7 +368,9 @@ namespace Server.TelegramController
 
         [ChatStateFilter((int) ConversationState.UpdatingServantList), MessageTypeFilter(MessageType.Photo)]
         public async Task SetUpdatedServantList() {
-            var master = await TelegramContext.Masters.FindAsync(int.Parse(TelegramChat["edit_servant_list"]));
+            var master = await TelegramContext.Masters
+                .Include(m => m.RegisteredChats)
+                .FirstOrDefaultAsync(m => m.Id == int.Parse(TelegramChat["edit_servant_list"]));
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
@@ -435,7 +437,9 @@ namespace Server.TelegramController
 
         [ChatStateFilter((int) ConversationState.UpdatingSupportList), MessageTypeFilter(MessageType.Photo)]
         public async Task SetUpdatedSupportList() {
-            var master = await TelegramContext.Masters.FindAsync(int.Parse(TelegramChat["edit_support_list"]));
+            var master = await TelegramContext.Masters
+                .Include(m => m.RegisteredChats)
+                .FirstOrDefaultAsync(m => m.Id == int.Parse(TelegramChat["edit_support_list"]));
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
@@ -498,6 +502,7 @@ namespace Server.TelegramController
             }
         }
 
+        /*
         [CommandFilter("servant"), ParametersFilter(1)]
         public async Task GetServant() {
             var scraper = new Scraper();
@@ -518,6 +523,7 @@ namespace Server.TelegramController
                 await ReplyTextMessageAsync("Servant non trovato");
             }
         }
+        */
 
         private async Task<bool> SaveChanges(string text = "Errore nel salvare i dati, provare a reinviare l'ultimo messaggio") {
             bool error = false;
