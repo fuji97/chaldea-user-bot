@@ -36,19 +36,17 @@ namespace Server.Migrations
                 {
                     UserId = table.Column<long>(nullable: false),
                     Key = table.Column<string>(nullable: false),
-                    Value = table.Column<string>(nullable: true),
-                    TelegramChatId = table.Column<long>(nullable: true)
+                    Value = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Data", x => new { x.UserId, x.Key });
-                    table.UniqueConstraint("AK_Data_Key_UserId", x => new { x.Key, x.UserId });
                     table.ForeignKey(
-                        name: "FK_Data_Users_TelegramChatId",
-                        column: x => x.TelegramChatId,
+                        name: "FK_Data_Users_UserId",
+                        column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -99,11 +97,6 @@ namespace Server.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Data_TelegramChatId",
-                table: "Data",
-                column: "TelegramChatId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Masters_UserId",

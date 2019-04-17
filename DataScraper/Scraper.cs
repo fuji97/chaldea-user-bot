@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using DataScraper.Models;
 using HtmlAgilityPack;
 using HtmlAgilityPack.CssSelectors.NetCore;
@@ -14,11 +15,11 @@ namespace DataScraper {
         private HtmlDocument Document { get; set; }
         
         public Scraper() {
-            var web = new HtmlWeb();
-            Document = web.Load(BASE_URL + ALL_SERVANTS_PATH);
         }
 
-        public List<ServantEntry> GetAllServants() {
+        public async Task<List<ServantEntry>> GetAllServants() {
+            var web = new HtmlWeb();
+            Document = await web.LoadFromWebAsync(BASE_URL + ALL_SERVANTS_PATH);
             var rootNode = Document.QuerySelector("table#rounded-corner");
             var nodes = rootNode.SelectSingleNode("//tbody").GetChildElements();
             var servants = new List<ServantEntry>();
@@ -27,7 +28,7 @@ namespace DataScraper {
                 servants.Add(CreateServantEntry(node));
             }
 
-            return null;
+            return servants;
         }
 
         private ServantEntry CreateServantEntry(HtmlNode node) {

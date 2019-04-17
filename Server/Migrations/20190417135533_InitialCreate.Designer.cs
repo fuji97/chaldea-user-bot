@@ -9,8 +9,8 @@ using Server.DbContext;
 namespace Server.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    [Migration("20190327233758_FixForeignKeys")]
-    partial class FixForeignKeys
+    [Migration("20190417135533_InitialCreate")]
+    partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

@@ -1,19 +1,25 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DataScraper;
 using DataScraper.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Server.DbContext;
+using Server.Filters;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Models;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Server.TelegramController
@@ -21,9 +27,11 @@ namespace Server.TelegramController
     
     public class Controller : TelegramController<MasterContext> {
         private readonly ILogger<Controller> _logger;
+        private IMemoryCache _cache;
 
-        public Controller(ILogger<Controller> logger) {
+        public Controller(ILogger<Controller> logger, IMemoryCache cache) {
             _logger = logger;
+            _cache = cache;
         }
 
         public Controller() {
@@ -502,20 +510,98 @@ namespace Server.TelegramController
             }
         }
 
-        /*
-        [CommandFilter("servant"), ParametersFilter(1)]
+        [InlineFilter]
+        public async Task InlineRequest() {
+            List<InlineQueryResultBase> results = new List<InlineQueryResultBase>();
+            
+            if (MessageCommand.Text.Length < 3) {
+                results.Add(new InlineQueryResultArticle(
+                    "1",
+                    "Pochi caratteri",
+                    new InputTextMessageContent("")));
+                await BotData.Bot.AnswerInlineQueryAsync(
+                    Update.InlineQuery.Id,
+                    results);
+                return;
+            }
+            
+            List<ServantEntry> servants = await _cache.GetOrCreateAsync("servants", entry => {
+                entry.SlidingExpiration = TimeSpan.FromHours(1);
+                var scraper = new Scraper();
+                return scraper.GetAllServants();
+            });
+            
+            var validServants = servants.Where(x => x.Name.IndexOf(MessageCommand.Message, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (!validServants.Any()) {
+                results.Add(new InlineQueryResultArticle(
+                    "2",
+                    "Nessun Servant trovato",
+                    new InputTextMessageContent("")));
+                await BotData.Bot.AnswerInlineQueryAsync(
+                    Update.InlineQuery.Id,
+                    results);
+                return;
+            }
+
+            foreach (var servant in validServants) {
+                results.Add(new InlineQueryResultArticle(
+                    servant.Id,
+                    servant.Name,
+                    new InputTextMessageContent($"" +
+                                                $"<b>{servant.Name}</b>\n" +
+                                                $"{servant.Class} [{(int) servant.Stars}★]\n" +
+                                                $"ATK: Base: <b>{servant.BaseAttack}</b> - Max: <b>{servant.MaxAttack}</b>\n" +
+                                                $"HP: Base: <b>{servant.BaseHp}</b> - Max: <b>{servant.MaxHp}</b>\n" +
+                                                $"Cards:\n" +
+                                                $"- Quick: <b>{servant.Cards[AttackType.Quick]}</b>\n" +
+                                                $"- Arts: <b>{servant.Cards[AttackType.Arts]}</b>\n" +
+                                                $"- Buster: <b>{servant.Cards[AttackType.Buster]}</b>\n" +
+                                                $"Noble Phantasm: <b>{servant.NpType}</b>\n\n" +
+                                                $"Commenti:\n" +
+                                                $"<i>{servant.Comments}</i>\n\n" +
+                                                $"<a href='{servant.ServantUrl}'>{servant.Name} su Cirnopedia</a>"
+                    ) {
+                        ParseMode = ParseMode.Html,
+                        DisableWebPagePreview = true
+                    }
+                ) {
+                    Description = $"{servant.Class} [{(int) servant.Stars}★]\n",
+                    ThumbUrl = servant.ImageUrl
+                });
+            }
+            
+            await BotData.Bot.AnswerInlineQueryAsync(
+                Update.InlineQuery.Id,
+                results);
+        }
+
+        [CommandFilter("servant")]
         public async Task GetServant() {
-            var scraper = new Scraper();
-            var servants = scraper.GetAllServants();
-            var servant = servants.FirstOrDefault(x => x.Name == MessageCommand.Parameters[0]);
+            if (MessageCommand.Parameters.Count < 1) {
+                await ReplyTextMessageAsync("Devi inviarmi il nome del Servant insieme al comando");
+                return;
+            }
+
+            List<ServantEntry> servants = await _cache.GetOrCreateAsync("servants", entry => {
+                entry.SlidingExpiration = TimeSpan.FromHours(1);
+                var scraper = new Scraper();
+                return scraper.GetAllServants();
+            });
+            
+            var servant = servants.FirstOrDefault(x => x.Name.IndexOf(MessageCommand.Message, StringComparison.OrdinalIgnoreCase) >= 0);
             if (servant != null) {
                 await ReplyTextMessageAsync($"<b>{servant.Name}</b>\n" +
-                                      $"{servant.Class} [{servant.Stars}★]\n" +
-                                      $"ATK: {servant.BaseAttack}/{servant.MaxAttack}\n" +
-                                      $"HP: {servant.BaseHp}/{servant.MaxHp}\n" +
-                                      $"Cards (Q/A/B): ({servant.Cards[AttackType.Quick]}/{servant.Cards[AttackType.Arts]}/{servant.Cards[AttackType.Buster]})\n" +
-                                      $"Noble Phantasm: {servant.NpType}\n\n" +
-                                      $"Commenti: {servant.Comments}\n\n" +
+                                      $"{servant.Class} [{(int) servant.Stars}★]\n" +
+                                      $"ATK: Base: <b>{servant.BaseAttack}</b> - Max: <b>{servant.MaxAttack}</b>\n" +
+                                      $"HP: Base: <b>{servant.BaseHp}</b> - Max: <b>{servant.MaxHp}</b>\n" +
+                                      $"Cards:\n" +
+                                      $"- Quick: <b>{servant.Cards[AttackType.Quick]}</b>\n" +
+                                      $"- Arts: <b>{servant.Cards[AttackType.Arts]}</b>\n" +
+                                      $"- Buster: <b>{servant.Cards[AttackType.Buster]}</b>\n" +
+                                      $"Noble Phantasm: <b>{servant.NpType}</b>\n\n" +
+                                      $"Commenti:\n" +
+                                      $"<i>{servant.Comments}</i>\n\n" +
                                       $"<a href='{servant.ServantUrl}'>{servant.Name} su Cirnopedia</a>",
                     ParseMode.Html, true);
             }
@@ -523,7 +609,6 @@ namespace Server.TelegramController
                 await ReplyTextMessageAsync("Servant non trovato");
             }
         }
-        */
 
         private async Task<bool> SaveChanges(string text = "Errore nel salvare i dati, provare a reinviare l'ultimo messaggio") {
             bool error = false;

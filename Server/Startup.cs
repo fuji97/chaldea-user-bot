@@ -37,7 +37,7 @@ namespace Server {
                 options => options.UseMySql(_configuration["ConnectionString"],
                     mySqlOptions =>
                     {
-                        mySqlOptions.ServerVersion(new Version(10, 1, 23), ServerType.MariaDb);
+                        mySqlOptions.ServerVersion(new Version(8, 0, 13), ServerType.MySql);
                     }
                 ));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
@@ -47,6 +47,7 @@ namespace Server {
                 .Build()
             );
             
+            services.AddMemoryCache();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 
