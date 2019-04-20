@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DataScraper;
@@ -12,7 +13,6 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Server.DbContext;
-using Server.Filters;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Dispatcher.Filters;
@@ -510,11 +510,11 @@ namespace Server.TelegramController
             }
         }
 
-        [InlineFilter]
+        [UpdateTypeFilter(UpdateType.InlineQuery)]
         public async Task InlineRequest() {
             List<InlineQueryResultBase> results = new List<InlineQueryResultBase>();
             
-            if (MessageCommand.Text.Length < 3) {
+            if (Update.InlineQuery.Query.Length < 3) {
                 results.Add(new InlineQueryResultArticle(
                     "1",
                     "Pochi caratteri",
@@ -531,7 +531,7 @@ namespace Server.TelegramController
                 return scraper.GetAllServants();
             });
             
-            var validServants = servants.Where(x => x.Name.IndexOf(MessageCommand.Message, StringComparison.OrdinalIgnoreCase) >= 0);
+            var validServants = servants.Where(x => x.Name.IndexOf(Update.InlineQuery.Query, StringComparison.OrdinalIgnoreCase) >= 0);
 
             if (!validServants.Any()) {
                 results.Add(new InlineQueryResultArticle(
@@ -545,29 +545,27 @@ namespace Server.TelegramController
             }
 
             foreach (var servant in validServants) {
+                
                 results.Add(new InlineQueryResultArticle(
                     servant.Id,
                     servant.Name,
-                    new InputTextMessageContent($"" +
+                    new InputTextMessageContent($"<a href='{servant.ImageUrl}'>&#8205;</a>" +
                                                 $"<b>{servant.Name}</b>\n" +
                                                 $"{servant.Class} [{(int) servant.Stars}★]\n" +
                                                 $"ATK: Base: <b>{servant.BaseAttack}</b> - Max: <b>{servant.MaxAttack}</b>\n" +
                                                 $"HP: Base: <b>{servant.BaseHp}</b> - Max: <b>{servant.MaxHp}</b>\n" +
-                                                $"Cards:\n" +
-                                                $"- Quick: <b>{servant.Cards[AttackType.Quick]}</b>\n" +
-                                                $"- Arts: <b>{servant.Cards[AttackType.Arts]}</b>\n" +
-                                                $"- Buster: <b>{servant.Cards[AttackType.Buster]}</b>\n" +
+                                                $"Deck: <b>{servant.GetDeckString()}</b>\n" +
                                                 $"Noble Phantasm: <b>{servant.NpType}</b>\n\n" +
                                                 $"Commenti:\n" +
                                                 $"<i>{servant.Comments}</i>\n\n" +
                                                 $"<a href='{servant.ServantUrl}'>{servant.Name} su Cirnopedia</a>"
                     ) {
                         ParseMode = ParseMode.Html,
-                        DisableWebPagePreview = true
+                        DisableWebPagePreview = false
                     }
                 ) {
-                    Description = $"{servant.Class} [{(int) servant.Stars}★]\n",
-                    ThumbUrl = servant.ImageUrl
+                    Description = $"{servant.Class} [{(int) servant.Stars}★]\nDeck: {servant.GetDeckString()}",
+                    ThumbUrl = servant.IconUrl
                 });
             }
             
@@ -591,14 +589,12 @@ namespace Server.TelegramController
             
             var servant = servants.FirstOrDefault(x => x.Name.IndexOf(MessageCommand.Message, StringComparison.OrdinalIgnoreCase) >= 0);
             if (servant != null) {
-                await ReplyTextMessageAsync($"<b>{servant.Name}</b>\n" +
+                await ReplyTextMessageAsync($"<a href='{servant.ImageUrl}'>&#8205;</a>" +
+                                      $"<b>{servant.Name}</b>\n" +
                                       $"{servant.Class} [{(int) servant.Stars}★]\n" +
                                       $"ATK: Base: <b>{servant.BaseAttack}</b> - Max: <b>{servant.MaxAttack}</b>\n" +
                                       $"HP: Base: <b>{servant.BaseHp}</b> - Max: <b>{servant.MaxHp}</b>\n" +
-                                      $"Cards:\n" +
-                                      $"- Quick: <b>{servant.Cards[AttackType.Quick]}</b>\n" +
-                                      $"- Arts: <b>{servant.Cards[AttackType.Arts]}</b>\n" +
-                                      $"- Buster: <b>{servant.Cards[AttackType.Buster]}</b>\n" +
+                                      $"Deck: <b>{servant.GetDeckString()}</b>\n" +
                                       $"Noble Phantasm: <b>{servant.NpType}</b>\n\n" +
                                       $"Commenti:\n" +
                                       $"<i>{servant.Comments}</i>\n\n" +

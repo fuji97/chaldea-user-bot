@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 
 namespace DataScraper.Models {
     public class ServantEntry {
@@ -6,10 +7,17 @@ namespace DataScraper.Models {
         public string Id { get; set; }
         public Stars Stars { get; set; }
 
-        public string ImageUrl {
+        public string IconUrl {
             get {
                 var str = Id.Substring(0,3) + "1";
                 return baseUrl + $"icons/servant/servant_{str}.png";
+            }
+        }
+
+        public string ImageUrl {
+            get {
+                var str = Id.Substring(0,3);
+                return baseUrl + $"icons/servant_card/{str}1.jpg";
             }
         }
 
@@ -39,6 +47,21 @@ namespace DataScraper.Models {
             Cards[AttackType.Quick] = 0;
             Cards[AttackType.Buster] = 0;
             Skills = new List<SkillEntry>();
+        }
+
+        public string GetDeckString() {
+            StringBuilder deck = new StringBuilder();
+            for (int i = 0; i < Cards[AttackType.Quick]; i++) {
+                deck.Append('Q');
+            }
+            for (int i = 0; i < Cards[AttackType.Arts]; i++) {
+                deck.Append('A');
+            }
+            for (int i = 0; i < Cards[AttackType.Buster]; i++) {
+                deck.Append('B');
+            }
+
+            return deck.ToString();
         }
     }
 }

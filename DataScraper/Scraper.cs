@@ -19,7 +19,8 @@ namespace DataScraper {
 
         public async Task<List<ServantEntry>> GetAllServants() {
             var web = new HtmlWeb();
-            Document = await web.LoadFromWebAsync(BASE_URL + ALL_SERVANTS_PATH);
+            //Document = await web.LoadFromWebAsync(BASE_URL + ALL_SERVANTS_PATH);
+            Document = web.Load(BASE_URL + ALL_SERVANTS_PATH);
             var rootNode = Document.QuerySelector("table#rounded-corner");
             var nodes = rootNode.SelectSingleNode("//tbody").GetChildElements();
             var servants = new List<ServantEntry>();
