@@ -60,7 +60,7 @@ namespace Server {
             else {
                 app.UseTelegramRouting();
             }
-
+            
             app.UseMvc();
         }
     }
