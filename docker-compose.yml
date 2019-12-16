@@ -1,0 +1,26 @@
+version: '3.0'
+
+services:
+  db:
+    image: mysql
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_DATABASE: chaldeabot
+      MYSQL_USER: chaldeabot
+      MYSQL_PASSWORD: chaldeabot
+    volumes:
+      - dbdata:/var/lib/mysql
+    restart: always
+  chaldeabot:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    env_file:
+      - vars.env
+    depends_on:
+      - db
+    build:
+      context: .
+    ports:
+      - "8080:80"
+volumes:
+  dbdata:

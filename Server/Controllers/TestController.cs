@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Server.DbContext;
 using Telegram.Bot.Advanced.Holder;
 
 namespace Server.Controllers {
@@ -27,6 +29,12 @@ namespace Server.Controllers {
                 webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
             }
             return Ok(webhooks);
+        }
+
+        [HttpGet("migrate")]
+        public async Task<IActionResult> ApplyMigration([FromServices] MasterContext context) {
+            await context.Database.MigrateAsync();
+            return Ok("Done");
         }
     }
 }
