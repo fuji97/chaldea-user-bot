@@ -10,4 +10,5 @@ RUN dotnet publish -c Release -o out
 FROM mcr.microsoft.com/dotnet/core/aspnet:2.2
 WORKDIR /app
 COPY --from=build-env /app/Server/out .
-ENTRYPOINT ["dotnet", "Server.dll"]
+# ENTRYPOINT ["dotnet", "Server.dll"]                   # Local development
+CMD ASPNETCORE_URLS=http://*:$PORT dotnet Server.dll    # Heroku deploy
