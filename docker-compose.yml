@@ -11,6 +11,8 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
     restart: always
+    ports:
+    - "3309:3306"
   chaldeabot:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
