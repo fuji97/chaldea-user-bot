@@ -6,7 +6,7 @@ using Telegram.Bot.Advanced.DbContexts;
 namespace Server.DbContext
 {
     public class MasterContext : TelegramContext {
-        private readonly IConfiguration _configuration;
+        protected readonly IConfiguration _configuration;
 
         public MasterContext(IConfiguration configuration) {
             _configuration = configuration;
