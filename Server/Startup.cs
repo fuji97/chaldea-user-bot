@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Server.DbContext;
 using Telegram.Bot;
 using Telegram.Bot.Advanced;
@@ -34,12 +34,7 @@ namespace Server {
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services) {
             services.AddDbContext<MasterContext>(
-                options => options.UseMySql(_configuration["ConnectionString"],
-                    mySqlOptions =>
-                    {
-                        mySqlOptions.ServerVersion(new Version(8, 0, 13), ServerType.MySql);
-                    }
-                ));
+                options => options.UseNpgsql(_configuration["ConnectionString"]));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
                 .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
                 .CreateTelegramBotClient(_configuration["BotKey"])
@@ -48,11 +43,13 @@ namespace Server {
             );
             
             services.AddMemoryCache();
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddMvc()
+                .AddMvcOptions(options => options.EnableEndpointRouting = false)
+                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env) {
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
                 app.UseTelegramPolling();

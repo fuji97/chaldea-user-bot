@@ -6,7 +6,7 @@ using Telegram.Bot.Advanced.DbContexts;
 namespace Server.DbContext
 {
     public class MasterContext : TelegramContext {
-        private readonly IConfiguration _configuration;
+        protected readonly IConfiguration _configuration;
 
         public MasterContext(IConfiguration configuration) {
             _configuration = configuration;
@@ -17,7 +17,7 @@ namespace Server.DbContext
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseMySql(_configuration["ConnectionString"]);
+            optionsBuilder.UseNpgsql(_configuration["ConnectionString"]);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
