@@ -17,7 +17,7 @@ namespace Server.DbContext
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseNpgsql(_configuration["ENV_DATABASE_URL"]);
+            optionsBuilder.UseNpgsql(_configuration["ConnectionString"]);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {

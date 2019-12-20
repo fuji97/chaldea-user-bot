@@ -1,12 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <LangVersion>8</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="HtmlAgilityPack" Version="1.11.3" />
-      <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.1.1" />
+      <PackageReference Include="HtmlAgilityPack" Version="1.11.17" />
+      <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.2.1" />
     </ItemGroup>
 
 </Project>

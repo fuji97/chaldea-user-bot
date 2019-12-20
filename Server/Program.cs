@@ -17,8 +17,8 @@ namespace Server {
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((hostingContext, config) => {
-                    config.AddEnvironmentVariables(prefix: "ENV_");
+                    config.AddEnvironmentVariables();
                 })
-                .UseStartup<StartupDocker>();
+                .UseStartup<Startup>();
     }
 }
