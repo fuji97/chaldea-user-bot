@@ -33,6 +33,21 @@ namespace Server {
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services) {
+            var connectionString = _configuration["DATABASE_URL"];
+            var replace = connectionString.Replace("//", "");
+
+            char[] delimiterChars = { '/', ':', '@', '?' };
+            string[] strConn = replace.Split(delimiterChars);
+            strConn = strConn.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+
+            var strUser = strConn[1];
+            var strPass = strConn[2];
+            var strServer = strConn[3];
+            var strDatabase = strConn[5];
+            var strPort = strConn[4];
+            connectionString = "host=" + strServer + ";port=" + strPort + ";database=" + strDatabase + ";uid=" + strUser + ";pwd=" + strPass + ";sslmode=Require;Trust Server Certificate=true;Timeout=1000";
+
+            
             services.AddDbContext<MasterContext>(
                 options => options.UseNpgsql(_configuration["ConnectionString"]));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
