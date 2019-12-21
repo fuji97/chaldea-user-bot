@@ -9,19 +9,19 @@ using Telegram.Bot.Advanced.Holder;
 namespace Server.Controllers {
     [ApiController]
     [Route("[controller]")]
-    public class TestController : Microsoft.AspNetCore.Mvc.Controller {
+    public class AdminController : Controller {
         private readonly ITelegramHolder _holder;
         private readonly IConfiguration _configuration;
         
 
-        public TestController(ITelegramHolder holder, IConfiguration configuration) {
+        public AdminController(ITelegramHolder holder, IConfiguration configuration) {
             _holder = holder;
             _configuration = configuration;
         }
         
         // GET
-        [HttpGet("webhook")]
-        public async Task<IActionResult> Index() {
+        [HttpGet("set_webhook")]
+        public async Task<IActionResult> SetWebhook() {
             List<string> webhooks = new List<string>();
             foreach (var bot in _holder) {
                 await bot.Bot.SetWebhookAsync(_configuration["BaseUrl"] + _configuration["BasePath"] +
@@ -29,6 +29,15 @@ namespace Server.Controllers {
                 webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
             }
             return Ok(webhooks);
+        }
+        
+        [HttpGet("remove_webhook")]
+        public async Task<IActionResult> RemoveWebhook() {
+            List<string> webhooks = new List<string>();
+            foreach (var bot in _holder) {
+                await bot.Bot.DeleteWebhookAsync();
+            }
+            return Ok("Done");
         }
 
         [HttpGet("migrate")]
