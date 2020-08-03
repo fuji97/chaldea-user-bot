@@ -69,6 +69,7 @@ namespace Server {
             }
 
             if (_configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
+                _logger.LogInformation("Using forwarded headers.");
                 app.UseForwardedHeaders(new ForwardedHeadersOptions
                 {
                     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
