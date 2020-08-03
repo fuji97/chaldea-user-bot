@@ -184,7 +184,7 @@ namespace Server.TelegramController
                     TelegramChat["server"] = ((int) MasterServer.JP).ToString();
                     TelegramChat.State = (int) ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
  
@@ -194,7 +194,7 @@ namespace Server.TelegramController
                     TelegramChat["server"] = ((int)MasterServer.US).ToString();
                     TelegramChat.State = (int)ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
                     break;
@@ -234,7 +234,7 @@ namespace Server.TelegramController
             TelegramChat.State = (int)ConversationState.Idle;
             TelegramChat.Data.Clear();
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, Master creato\nOra lo puoi collevare alle varie chat con il comando /link " + TelegramChat["nome"]);
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, Master creato\nOra lo puoi collegare alle varie chat con il comando /link " + TelegramChat["nome"]);
             }
         }
         
@@ -246,7 +246,7 @@ namespace Server.TelegramController
             TelegramChat.State = (int)ConversationState.Idle;
             TelegramChat.Data.Clear();
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della servant list\nOk, Master creato\nOra lo puoi collevare alle varie chat con il comando /link " + TelegramChat["nome"]);
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della servant list\nOk, Master creato\nOra lo puoi collegare alle varie chat con il comando /link " + TelegramChat["nome"]);
             }
         }
 
