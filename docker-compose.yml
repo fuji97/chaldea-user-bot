@@ -2,27 +2,29 @@ version: '3.0'
 
 services:
   db:
-    image: mysql
+    image: postgres:12
     environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: 1
-      MYSQL_DATABASE: chaldeabot
-      MYSQL_USER: chaldeabot
-      MYSQL_PASSWORD: chaldeabot
+      POSTGRES_USER: chaldeabot
+      POSTGRES_PASSWORD: chaldeabot
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:/var/lib/postgresql/data
     restart: always
     ports:
-    - "3309:3306"
+    - "5435:5432"
   chaldeabot:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    env_file:
-      - vars.env
+      - CONNECTION_STRING=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
+      - ASPNETCORE_URLS=http://*:80
     depends_on:
       - db
     build:
       context: .
     ports:
-      - "8080:80"
+      - "5000:80"
 volumes:
   dbdata:
+    
+networks:
+  default:
+    driver: bridge

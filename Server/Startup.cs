@@ -38,7 +38,7 @@ namespace Server {
             _logger.LogInformation($"Listening on bot [{_configuration["BotKey"]}] on path {_configuration["BasePath"]}");
             
             services.AddDbContext<MasterContext>(
-                options => options.UseNpgsql(Utils.ConnectionStringFromUri(_configuration["DATABASE_URL"])));
+                options => options.UseNpgsql(_configuration["CONNECTION_STRING"]));
             services.AddTelegramHolder(new TelegramBotDataBuilder()
                 .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
                 .CreateTelegramBotClient(_configuration["BotKey"])
@@ -59,11 +59,21 @@ namespace Server {
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
+            // Initialize database
+            if (_configuration.GetValue<bool>("migrate")) {
+                using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+                var context = serviceScope.ServiceProvider.GetService<MasterContext>();
+                _logger.LogInformation("Application started with /migrate. Applying migrations...");
+                context.Database.Migrate();
+            }
+            
             if (env.IsDevelopment()) {
+                _logger.LogInformation("Development. Starting in Polling mode.");
                 app.UseDeveloperExceptionPage();
                 app.UseTelegramPolling();
             }
             else {
+                _logger.LogInformation("Production. Listening to Telegram requests.");
                 app.UseTelegramRouting();
             }
             
