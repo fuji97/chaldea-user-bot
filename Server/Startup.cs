@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -66,8 +67,15 @@ namespace Server {
                 _logger.LogInformation("Application started with /migrate. Applying migrations...");
                 context.Database.Migrate();
             }
-            
-            if (env.IsDevelopment()) {
+
+            if (_configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
+                app.UseForwardedHeaders(new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                });
+            }
+
+                if (env.IsDevelopment()) {
                 _logger.LogInformation("Development. Starting in Polling mode.");
                 app.UseDeveloperExceptionPage();
                 app.UseTelegramPolling();

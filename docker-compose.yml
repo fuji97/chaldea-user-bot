@@ -10,12 +10,13 @@ services:
       - dbdata:/var/lib/postgresql/data
     restart: always
     ports:
-    - "5435:5432"
+    - "5432:5432"
   chaldeabot:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - CONNECTION_STRING=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
       - ASPNETCORE_URLS=http://*:80
+      - USE_FORWARDED_HEADERS=true
     depends_on:
       - db
     build:
