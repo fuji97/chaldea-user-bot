@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +21,11 @@ namespace Server.Controllers {
         }
         
         // GET
-        [HttpGet("set_webhook")]
-        public async Task<IActionResult> SetWebhook() {
+        [HttpGet("set_webhook/{endpoint}")]
+        public async Task<IActionResult> SetWebhook([FromRoute] string endpoint) {
             List<string> webhooks = new List<string>();
-            foreach (var bot in _holder) {
+            var bot = _holder.FirstOrDefault(b => b.Endpoint == endpoint);
+            if (bot != null) {
                 await bot.Bot.SetWebhookAsync(_configuration["BaseUrl"] + _configuration["BasePath"] +
                                               bot.Endpoint);
                 webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
@@ -31,10 +33,11 @@ namespace Server.Controllers {
             return Ok(webhooks);
         }
         
-        [HttpGet("remove_webhook")]
-        public async Task<IActionResult> RemoveWebhook() {
+        [HttpGet("remove_webhook/{endpoint}")]
+        public async Task<IActionResult> RemoveWebhook([FromRoute] string endpoint) {
             List<string> webhooks = new List<string>();
-            foreach (var bot in _holder) {
+            var bot = _holder.FirstOrDefault(b => b.Endpoint == endpoint);
+            if (bot != null) {
                 await bot.Bot.DeleteWebhookAsync();
             }
             return Ok("Done");
