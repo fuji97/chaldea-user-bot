@@ -59,6 +59,7 @@ namespace Server.TelegramController
                                         "/list - Mostra una lista di tutti i Master registrati nel gruppo\n" +
                                         "/link &lt;nome&gt; - Collega il Master alla chat, in modo che possa essere visualizzato con il comando /master\n" +
                                         "/master &lt;nome&gt; - Visualizza le informazioni del Master (se è collegato)\n" +
+                                        "/unlink &lt;nome&gt; - Scollega il Master (gli admin possono scollegare qualsiasi Master)\n" +
                                         "/reset - [SOLO ADMIN] - Resetta lo stato del bot e cancella i dati temporanei (non cancella i Master collegati), da usare solo se il bot da errori ESPLICITI; da NON usare se semplicemente non risponde\n" +
                                         "\n" +
                                         "[OVUNQUE]\n" +
@@ -306,6 +307,56 @@ namespace Server.TelegramController
                     else {
                         await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                             "Master già collegato"); 
+                    }
+                }
+            }
+        }
+        
+        [CommandFilter("unlink"), ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
+        public async Task UnlinkMaster() {
+            if (MessageCommand.Parameters.Count < 1) {
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                    "Devi passarmi il nome del master che vuoi scollegare");
+            }
+            else {
+                var master = TelegramContext.Masters.FirstOrDefault(m =>
+                    m.User.Id == Update.Message.From.Id && m.Name == MessageCommand.Parameters.Join(" "));
+
+                if (master == null) {
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
+                }
+                else {
+                    var chat = TelegramContext.RegisteredChats.FirstOrDefault(c =>
+                        c.MasterId == master.Id && c.ChatId == TelegramChat.Id);
+
+                    if (chat == null) {
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                            "Nessun Master collegato con questo nome");
+                    }
+                    else {
+                        if (Update.Message.From.Id == master.UserId) {
+                            TelegramContext.RegisteredChats.Remove(chat);
+                            if (await SaveChanges()) {
+                                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                                    "Master scollegato correttamente"); 
+                            }
+                        }
+                        else {
+                            var isAdmin = (await BotData.Bot.GetChatAdministratorsAsync(TelegramChat.Id))
+                                .Any(ua => ua.User.Id == Update.Message.From.Id);
+                            if (isAdmin) {
+                                TelegramContext.RegisteredChats.Remove(chat);
+                                if (await SaveChanges()) {
+                                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                                        "Master scollegato correttamente"); 
+                                }
+                            }
+                            else {
+                                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                                    "Non puoi scollegare questo utente");
+                            }
+                        }
                     }
                 }
             }
