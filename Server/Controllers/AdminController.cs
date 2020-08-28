@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Server.DbContext;
-using Telegram.Bot.Advanced.Holder;
+using Telegram.Bot.Advanced.Core.Holder;
 
 namespace Server.Controllers {
     [ApiController]

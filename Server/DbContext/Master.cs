@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Telegram.Bot.Advanced.Models;
+using Telegram.Bot.Advanced.DbContexts;
 
 namespace Server.DbContext
 {
@@ -20,10 +20,12 @@ namespace Server.DbContext
         public ICollection<RegisteredChat> RegisteredChats { get; set; }
         [ForeignKey("UserId")]
         public TelegramChat User { get; set; }
+        
+        public bool UseRayshift { get; set; }
 
         public Master() { }
 
-        public Master(TelegramChat user, string name, string friendCode, MasterServer server, string support = null, string servant = null,
+        public Master(TelegramChat user, string name, string friendCode, MasterServer server, string support = null, string servant = null, bool useRayshift = false,
             MasterStatus status = MasterStatus.Enabled) {
             User = user;
             UserId = user.Id;
@@ -33,6 +35,7 @@ namespace Server.DbContext
             SupportList = support;
             ServantList = servant;
             Status = status;
+            UseRayshift = useRayshift;
         }
 
         /*

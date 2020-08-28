@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -15,12 +10,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Server.DbContext;
 using Server.Infrastructure;
-using Telegram.Bot;
-using Telegram.Bot.Advanced;
+using Telegram.Bot.Advanced.Controller;
+using Telegram.Bot.Advanced.Core.Dispatcher;
+using Telegram.Bot.Advanced.Core.Holder;
 using Telegram.Bot.Advanced.DbContexts;
-using Telegram.Bot.Advanced.Dispatcher;
 using Telegram.Bot.Advanced.Extensions;
-using Telegram.Bot.Advanced.Holder;
+using Telegram.Bot.Advanced.Models;
 using Controller = Server.TelegramController.Controller;
 
 namespace Server {
@@ -32,30 +27,25 @@ namespace Server {
             _configuration = configuration;
             _logger = logger;
         }
-
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
+        
         public void ConfigureServices(IServiceCollection services) {
             _logger.LogInformation($"Listening on bot [{_configuration["BotKey"]}] on path {_configuration["BasePath"]}");
             
             services.AddDbContext<MasterContext>(
                 options => options.UseNpgsql(_configuration["CONNECTION_STRING"]));
-            services.AddTelegramHolder(new TelegramBotDataBuilder()
-                .UseDispatcherBuilder(new DispatcherBuilder<MasterContext, Controller>())
-                .CreateTelegramBotClient(_configuration["BotKey"])
-                .SetBasePath(_configuration["BasePath"])
-                .Build()
+            services.AddTelegramHolder(new TelegramBotData(options => {
+                    options.CreateTelegramBotClient(_configuration["BotKey"]);
+                    options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
+                        .RegisterNewsletterController<MasterContext>());
+                    options.BasePath = _configuration["BasePath"];
+                    
+                    options.DefaultUserRole.Add(
+                        new UserRole("fuji97", ChatRole.Administrator));
+                    })
             );
             
             services.AddMemoryCache();
-            services.AddMvc()
-                .AddMvcOptions(options => options.EnableEndpointRouting = false)
-                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
-            
-            services.Configure<KestrelServerOptions>(options =>
-            {
-                options.AllowSynchronousIO = true;
-            });
+            services.AddControllersWithViews();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -64,8 +54,16 @@ namespace Server {
             if (_configuration.GetValue<bool>("migrate")) {
                 using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
                 var context = serviceScope.ServiceProvider.GetService<MasterContext>();
-                _logger.LogInformation("Application started with /migrate. Applying migrations...");
+                _logger.LogInformation("Application started with --migrate true. Applying migrations...");
                 context.Database.Migrate();
+            }
+            
+            // Seed data
+            if (_configuration.GetValue<bool>("seed")) {
+                using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
+                var context = serviceScope.ServiceProvider.GetService<MasterContext>();
+                _logger.LogInformation("Application started with --seed true. Applying migrations...");
+                app.SeedData();
             }
 
             if (_configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
@@ -76,7 +74,7 @@ namespace Server {
                 });
             }
 
-                if (env.IsDevelopment()) {
+            if (env.IsDevelopment()) {
                 _logger.LogInformation("Development. Starting in Polling mode.");
                 app.UseDeveloperExceptionPage();
                 app.UseTelegramPolling();
@@ -85,8 +83,13 @@ namespace Server {
                 _logger.LogInformation("Production. Listening to Telegram requests.");
                 app.UseTelegramRouting();
             }
-            
-            app.UseMvc();
+
+            app.UseRouting();
+            app.UseEndpoints(endpoints => {
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
+            });
         }
     }
 }

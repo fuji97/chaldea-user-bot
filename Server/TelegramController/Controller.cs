@@ -1,25 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.IO;
 using System.Linq;
-using System.Text;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DataScraper;
 using DataScraper.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Rayshift;
+using Rayshift.Models;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Controller;
-using Telegram.Bot.Advanced.DbContexts;
-using Telegram.Bot.Advanced.Dispatcher.Filters;
-using Telegram.Bot.Advanced.Models;
+using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
+using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Server.TelegramController
@@ -28,10 +29,12 @@ namespace Server.TelegramController
     public class Controller : TelegramController<MasterContext> {
         private readonly ILogger<Controller> _logger;
         private IMemoryCache _cache;
+        private IConfiguration _configuration;
 
-        public Controller(ILogger<Controller> logger, IMemoryCache cache) {
+        public Controller(ILogger<Controller> logger, IMemoryCache cache, IConfiguration configuration) {
             _logger = logger;
             _cache = cache;
+            _configuration = configuration;
         }
 
         public Controller() {
@@ -50,6 +53,7 @@ namespace Server.TelegramController
                                         "[IN PRIVATO]\n" +
                                         "/add &lt;nome?&gt; - Registra un nuovo Master\n" +
                                         "/list - Mostra una lista di tutti i tuoi Master\n" +
+                                        "/master &lt;nome&gt; - Visualizza le informazioni di un tuo Master\n" +
                                         "/remove &lt;nome&gt; - Cancella il Master\n" +
                                         "/support_list &lt;nome&gt; - Aggiorna la support list del Master\n" +
                                         "/servant_list &lt;nome&gt; - Aggiorna la servant list del Master\n" +
@@ -100,7 +104,7 @@ namespace Server.TelegramController
         public async Task Add() {
             _logger.LogInformation("Ricevuto comando /add");
             if (MessageCommand.Parameters.Count < 1) {
-                TelegramChat.State = (int) ConversationState.Nome;
+                TelegramChat.State = ConversationState.Nome;
                 if (await SaveChanges()) {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, inviami il nome che vuoi usare");
                 }
@@ -108,11 +112,12 @@ namespace Server.TelegramController
             else {
                 if (CheckName(MessageCommand.Message)) {
                     
-                    TelegramChat.State = (int) ConversationState.FriendCode;
+                    TelegramChat.State = ConversationState.FriendCode;
                     TelegramChat["nome"] = MessageCommand.Message;
+                    // TODO Merge Friend code request
                     if (await SaveChanges()) {
                         await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                            "Ok, inviami il friend code in formato XXXXXXXXX");
+                            "Ok, inviami il friend code in formato 123456789");
                     }
                 }
                 else {
@@ -123,13 +128,13 @@ namespace Server.TelegramController
             }
         }
 
-        [ChatStateFilter((int) ConversationState.Nome), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
+        [ChatStateFilter(ConversationState.Nome), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetNome() {
             _logger.LogInformation($"Nome ricevuto da @{TelegramChat?.Username}: {MessageCommand.Text}");
             if (TelegramChat != null) {
                 if (CheckName(MessageCommand.Text)) {
                     TelegramChat["nome"] = MessageCommand.Text;
-                    TelegramChat.State = (int)ConversationState.FriendCode;
+                    TelegramChat.State = ConversationState.FriendCode;
                     if (await SaveChanges()) {
                         await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, adesso inviami il friend code in formato XXXXXXXXX");
                     }
@@ -148,12 +153,12 @@ namespace Server.TelegramController
             return !TelegramContext.Masters.Any(m => m.Name == messageText);
         }
 
-        [ChatStateFilter((int) ConversationState.FriendCode), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
+        [ChatStateFilter(ConversationState.FriendCode), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetFriendCode() {
             _logger.LogInformation($"Ricevuto friend code: {Update.Message.Text}");
             if (Regex.IsMatch(Update.Message.Text, @"^\d{5}")) {
                 TelegramChat["friend_code"] = Update.Message.Text;
-                TelegramChat.State = (int) ConversationState.Server;
+                TelegramChat.State = ConversationState.Server;
                 if (await SaveChanges()) {
                     await BotData.Bot.SendTextMessageAsync(
                         TelegramChat.Id,
@@ -171,11 +176,11 @@ namespace Server.TelegramController
             {
                 await BotData.Bot.SendTextMessageAsync(
                     TelegramChat.Id,
-                    "Il friend code non è valido, deve avere il seguente formato XXXXXXXXX");
+                    "Il friend code non è valido, deve avere il seguente formato 123456789");
             }
         }
 
-        [ChatStateFilter((int)ConversationState.Server), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
+        [ChatStateFilter(ConversationState.Server), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
         public async Task GetServer()
         {
             _logger.LogInformation($"Ricevuto server {Update.Message.Text}");
@@ -183,9 +188,9 @@ namespace Server.TelegramController
                 case "JP":
                     
                     TelegramChat["server"] = ((int) MasterServer.JP).ToString();
-                    TelegramChat.State = (int) ConversationState.SupportList;
+                    TelegramChat.State = ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
  
@@ -193,9 +198,9 @@ namespace Server.TelegramController
                 case "US":
                     
                     TelegramChat["server"] = ((int)MasterServer.US).ToString();
-                    TelegramChat.State = (int)ConversationState.SupportList;
+                    TelegramChat.State = ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support o /skip se vuoi saltare questa fase ",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
                     break;
@@ -205,46 +210,80 @@ namespace Server.TelegramController
             }
         }
 
-        [ChatStateFilter((int) ConversationState.SupportList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
+        [ChatStateFilter(ConversationState.SupportList), CommandFilter("rayshift"), MessageTypeFilter(MessageType.Text)]
+        public async Task SetupRayshift() {
+            await ReplyTextMessageAsync("Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
+
+            Region region = ServerToRegion((MasterServer) Int32.Parse(TelegramChat["server"]));
+
+            using (var client = new RayshiftClient(_configuration["ApiKey"])) {
+                var result = await client.RequestSupportLookup(region, TelegramChat["friend_code"], async response => {
+                    // TODO Use a different DbContext to avoid using a dispatched object
+                    if (response?.Response != null) {
+                        TelegramChat["support_photo"] = null;
+                        TelegramChat["use_rayshift"] = "true";
+                        TelegramChat.State = ConversationState.ServantList;
+                        if (await SaveChanges()) {
+                            await ReplyTextMessageAsync(
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                            await ReplyPhotoAsync(
+                                new InputOnlineFile(new Uri(response.Response.SupportList(SupportListType.Both))));
+                            await ReplyTextMessageAsync(
+                                "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n" +
+                                "Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase. Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+                        }
+                    }
+                });
+
+                if (!result) {
+                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
+                                                "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
+                    return;
+                }
+            }
+        }
+
+        [ChatStateFilter(ConversationState.SupportList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
         public async Task SkipSupportList() {
             TelegramChat["support_photo"] = null;
-            TelegramChat.State = (int) ConversationState.ServantList;
+            TelegramChat.State = ConversationState.ServantList;
             if (await SaveChanges()) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della support list\nOra inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
             }
         }
 
-        [ChatStateFilter((int) ConversationState.SupportList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
+        [ChatStateFilter(ConversationState.SupportList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
         public async Task SupportList()
         {
             _logger.LogInformation("Ricevuta foto");
             TelegramChat["support_photo"] = Update.Message.Photo[0].FileId;
-            TelegramChat.State = (int) ConversationState.ServantList;
+            TelegramChat.State = ConversationState.ServantList;
             if (await SaveChanges()) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
             }
         }
         
-        [ChatStateFilter((int)ConversationState.ServantList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
+        [ChatStateFilter(ConversationState.ServantList), NoCommandFilter, MessageTypeFilter(MessageType.Photo)]
         public async Task ServantList()
         {
             _logger.LogInformation("Ricevuta foto, creazione Master e inserimento");
+            // TODO Unire le due creazioni del master sotto un unico metodo
             var master = new Master(TelegramChat, TelegramChat["nome"], TelegramChat["friend_code"], (MasterServer) Int32.Parse(TelegramChat["server"]), TelegramChat["support_photo"],
-                Update.Message.Photo[0].FileId);
+                Update.Message.Photo[0].FileId, TelegramChat["use_rayshift"] == "true");
             TelegramContext.Add(master);
-            TelegramChat.State = (int)ConversationState.Idle;
+            TelegramChat.State = ConversationState.Idle;
             TelegramChat.Data.Clear();
             if (await SaveChanges()) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, Master creato\nOra lo puoi collegare alle varie chat con il comando /link " + TelegramChat["nome"]);
             }
         }
         
-        [ChatStateFilter((int) ConversationState.ServantList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
+        [ChatStateFilter(ConversationState.ServantList), CommandFilter("skip"), MessageTypeFilter(MessageType.Text)]
         public async Task SkipServantList() {
             var master = new Master(TelegramChat, TelegramChat["nome"], TelegramChat["friend_code"], (MasterServer) Int32.Parse(TelegramChat["server"]), TelegramChat["support_photo"],
-                null);
+                null, TelegramChat["use_rayshift"] == "true");
             TelegramContext.Add(master);
-            TelegramChat.State = (int)ConversationState.Idle;
+            TelegramChat.State = ConversationState.Idle;
             TelegramChat.Data.Clear();
             if (await SaveChanges()) {
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della servant list\nOk, Master creato\nOra lo puoi collegare alle varie chat con il comando /link " + TelegramChat["nome"]);
@@ -350,11 +389,11 @@ namespace Server.TelegramController
         }
 
         [CommandFilter("master"), ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
-        public async Task ShowMaster() {
+        public async Task ShowMasterGroups() {
             if (MessageCommand.Parameters.Count < 1) {
                 _logger.LogDebug("Ricevuto comando /master senza parametri");
                 await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                    "Devi passarmi il nome del master che vuoi inviare");
+                    "Devi passarmi il nome del master che vuoi mostrare");
             }
             else {
                 var master = TelegramContext.Masters
@@ -365,7 +404,30 @@ namespace Server.TelegramController
                         "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
                 }
                 else {
-                    if (master.ServantList != null && master.SupportList != null) {
+                    // TODO Unificare metodo di invio del master
+                    if (master.UseRayshift) {
+                        var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
+                        if (supportList != null) {
+                            if (master.ServantList != null) {
+                                await BotData.Bot.SendMediaGroupAsync(new[] {
+                                        new InputMediaPhoto(new InputMedia(master.SupportList)),
+                                        new InputMediaPhoto(new InputMedia(master.ServantList))
+                                    },
+                                    TelegramChat.Id);
+                            }
+                            else {
+                                await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
+                            }
+                        }
+                        else {
+                            // TODO Log
+                            await ReplyTextMessageAsync("Errore nell'ottenere la support list da Rayshift.io");
+
+                            if (master.ServantList != null) {
+                                await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
+                            }
+                        }
+                    } else if (master.ServantList != null && master.SupportList != null) {
                         await BotData.Bot.SendMediaGroupAsync(new[] {
                                 new InputMediaPhoto(new InputMedia(master.SupportList)),
                                 new InputMediaPhoto(new InputMedia(master.ServantList))
@@ -388,6 +450,80 @@ namespace Server.TelegramController
                 }
             }
         }
+        
+        [CommandFilter("master"), ChatTypeFilter(ChatType.Private)]
+        public async Task ShowMasterPrivate() {
+            if (MessageCommand.Parameters.Count < 1) {
+                _logger.LogDebug("Ricevuto comando /master senza parametri");
+                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                    "Devi passarmi il nome del master che vuoi mostrare");
+            }
+            else {
+                var master = TelegramContext.Masters
+                    .Include(m => m.User)
+                    .SingleOrDefault(m => m.Name == MessageCommand.Parameters.Join(" ") && 
+                                          m.UserId == Update.Message.Chat.Id);
+                if (master == null) {
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
+                }
+                else {
+                    if (master.UseRayshift) {
+                        var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
+                        if (supportList != null) {
+                            if (master.ServantList != null) {
+                                await BotData.Bot.SendMediaGroupAsync(new[] {
+                                        new InputMediaPhoto(new InputMedia(supportList[SupportListType.Normal])),
+                                        new InputMediaPhoto(new InputMedia(supportList[SupportListType.Event])),
+                                        new InputMediaPhoto(new InputMedia(master.ServantList))
+                                    },
+                                    TelegramChat.Id);
+                            }
+                            else {
+                                await BotData.Bot.SendMediaGroupAsync(new IAlbumInputMedia[] {
+                                        new InputMediaPhoto(new InputMedia(supportList[SupportListType.Normal])),
+                                        new InputMediaPhoto(new InputMedia(supportList[SupportListType.Event]))
+                                    }, 
+                                    TelegramChat.Id);
+                            }
+                        }
+                        else {
+                            // TODO Log
+                            await ReplyTextMessageAsync("Errore nell'ottenere la support list da Rayshift.io");
+
+                            if (master.ServantList != null) {
+                                await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
+                            }
+                        }
+                    } else if (master.ServantList != null && master.SupportList != null) {
+                        await BotData.Bot.SendMediaGroupAsync(new[] {
+                                new InputMediaPhoto(new InputMedia(master.SupportList)),
+                                new InputMediaPhoto(new InputMedia(master.ServantList))
+                            },
+                            TelegramChat.Id);
+                    }
+                    else if (master.ServantList != null) {
+                        await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.ServantList));
+                    }
+                    else if (master.SupportList != null) {
+                        await BotData.Bot.SendPhotoAsync(TelegramChat.Id, new InputMedia(master.SupportList));
+                    }
+
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                        $"<b>Master:</b> {master.Name}\n" +
+                        $"<b>Friend Code:</b> {master.FriendCode}\n" +
+                        $"<b>Server:</b> {master.Server.ToString()}\n" +
+                        $"<b>Registrato da:</b> <a href=\"tg://user?id={master.UserId}\">@{master.User.Username}</a>",
+                        ParseMode.Html);
+                }
+            }
+        }
+        
+        // TODO Move down
+        private async Task<Stream> GetImageStream(Uri url) {
+            using HttpClient client = new HttpClient();
+            return await client.GetStreamAsync(url);
+        }
 
         #region Aggiornamento servant list
         
@@ -404,7 +540,7 @@ namespace Server.TelegramController
                 }
                 else {
                     TelegramChat["edit_servant_list"] = master.Id.ToString();
-                    TelegramChat.State = (int) ConversationState.UpdatingServantList;
+                    TelegramChat.State = ConversationState.UpdatingServantList;
                     if (await SaveChanges()) {
                         await ReplyTextMessageAsync("Inviami la nuova foto o /skip che rimuoverla");
                     }
@@ -412,7 +548,7 @@ namespace Server.TelegramController
             }
         }
 
-        [ChatStateFilter((int) ConversationState.UpdatingServantList), MessageTypeFilter(MessageType.Photo)]
+        [ChatStateFilter(ConversationState.UpdatingServantList), MessageTypeFilter(MessageType.Photo)]
         public async Task SetUpdatedServantList() {
             var master = await TelegramContext.Masters
                 .Include(m => m.RegisteredChats)
@@ -420,14 +556,14 @@ namespace Server.TelegramController
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
-                TelegramChat.State = (int) ConversationState.Idle;
+                TelegramChat.State = ConversationState.Idle;
                 await SaveChanges();
                 return;
             }
 
             _logger.LogDebug($"Impostando l'immagine {Update.Message.Photo[0].FileId} come servant list del Master {master.Name}");
             master.ServantList = Update.Message.Photo[0].FileId;
-            TelegramChat.State = (int) ConversationState.Idle;
+            TelegramChat.State = ConversationState.Idle;
             if (await SaveChanges()) {
                 foreach (var chat in master.RegisteredChats) {
                     await BotData.Bot.SendTextMessageAsync(chat.ChatId,
@@ -437,20 +573,20 @@ namespace Server.TelegramController
             }
         }
         
-        [ChatStateFilter((int) ConversationState.UpdatingServantList), CommandFilter("skip")]
+        [ChatStateFilter(ConversationState.UpdatingServantList), CommandFilter("skip")]
         public async Task SetUpdatedServantListEmpty() {
             var master = await TelegramContext.Masters.FindAsync(int.Parse(TelegramChat["edit_servant_list"]));
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
-                TelegramChat.State = (int) ConversationState.Idle;
+                TelegramChat.State = ConversationState.Idle;
                 await SaveChanges();
                 return;
             }
 
             master.ServantList = null;
             _logger.LogDebug($"Impostato null come servant list del Master {master.Name}");
-            TelegramChat.State = (int) ConversationState.Idle;
+            TelegramChat.State = ConversationState.Idle;
             if (await SaveChanges()) {
                 await ReplyTextMessageAsync("Lista dei servant rimossa correttamente");
             }
@@ -473,15 +609,15 @@ namespace Server.TelegramController
                 }
                 else {
                     TelegramChat["edit_support_list"] = master.Id.ToString();
-                    TelegramChat.State = (int) ConversationState.UpdatingSupportList;
+                    TelegramChat.State = ConversationState.UpdatingSupportList;
                     if (await SaveChanges()) {
-                        await ReplyTextMessageAsync("Inviami la nuova foto o /skip che rimuoverla");
+                        await ReplyTextMessageAsync("Inviami la nuova foto, /rayshift se vuoi impostare Rayshift.io come provider o /skip se vuoi rimuoverla");
                     }
                 }
             }
         }
 
-        [ChatStateFilter((int) ConversationState.UpdatingSupportList), MessageTypeFilter(MessageType.Photo)]
+        [ChatStateFilter(ConversationState.UpdatingSupportList), MessageTypeFilter(MessageType.Photo)]
         public async Task SetUpdatedSupportList() {
             var master = await TelegramContext.Masters
                 .Include(m => m.RegisteredChats)
@@ -489,13 +625,14 @@ namespace Server.TelegramController
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
-                TelegramChat.State = (int) ConversationState.Idle;
+                TelegramChat.State = ConversationState.Idle;
                 await SaveChanges();
                 return;
             }
             _logger.LogDebug($"Impostando l'immagine {Update.Message.Photo[0].FileId} come support list del Master {master.Name}");
             master.SupportList = Update.Message.Photo[0].FileId;
-            TelegramChat.State = (int) ConversationState.Idle;
+            master.UseRayshift = false;
+            TelegramChat.State = ConversationState.Idle;
             if (await SaveChanges()) {
                 foreach (var chat in master.RegisteredChats) {
                     await BotData.Bot.SendTextMessageAsync(chat.ChatId,
@@ -505,23 +642,97 @@ namespace Server.TelegramController
             }
         }
         
-        [ChatStateFilter((int) ConversationState.UpdatingSupportList), CommandFilter("skip")]
+        [ChatStateFilter(ConversationState.UpdatingSupportList), CommandFilter("rayshift")]
+        public async Task SetUpdatedSupportListRayshift() {
+            var master = await TelegramContext.Masters.FindAsync(int.Parse(TelegramChat["edit_support_list"]));
+
+            if (master == null) {
+                await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
+                TelegramChat.State = ConversationState.Idle;
+                await SaveChanges();
+                return;
+            }
+
+            if (master.UseRayshift) {
+                TelegramChat.State = ConversationState.Idle;
+                await SaveChanges();
+                await ReplyTextMessageAsync("Rayshift è già impostato per questo master. Se vuoi aggiornare la support list usa il comando /update <MASTER>");
+                return;
+            }
+
+            await ReplyTextMessageAsync("Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
+
+            var region = ServerToRegion(master.Server);
+
+            // TODO Unificare la connessione a Rayshift?
+
+            using (var client = new RayshiftClient(_configuration["ApiKey"])) {
+                var result = await client.RequestSupportLookup(region, master.FriendCode, async response => {
+                    // TODO Use a different DbContext to avoid using a dispatched object
+                    if (response?.Response != null) {
+                        master.UseRayshift = true;
+                        master.SupportList = null;
+                        TelegramChat.State = ConversationState.Idle;
+                        if (await SaveChanges()) {
+                            await ReplyTextMessageAsync(
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                            await ReplyPhotoAsync(
+                                new InputOnlineFile(new Uri(response.Response.SupportList(SupportListType.Both))));
+                            await ReplyTextMessageAsync(
+                                "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n" +
+                                "Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase. Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+                        }
+                    }
+                });
+
+                if (!result) {
+                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
+                                                "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
+                    return;
+                }
+            }
+        }
+
+        // TODO Move down
+        private static Region ServerToRegion(MasterServer server) {
+            Region region = Region.Na;
+            switch (server) {
+                case MasterServer.JP:
+                    region = Region.Jp;
+                    break;
+                case MasterServer.US:
+                    region = Region.Na;
+                    break;
+            }
+
+            return region;
+        }
+
+        [ChatStateFilter(ConversationState.UpdatingSupportList), CommandFilter("skip")]
         public async Task SetUpdatedSupportListEmpty() {
             var master = await TelegramContext.Masters.FindAsync(int.Parse(TelegramChat["edit_support_list"]));
 
             if (master == null) {
                 await ReplyTextMessageAsync("Il Master scelto non è più disponibile");
-                TelegramChat.State = (int) ConversationState.Idle;
+                TelegramChat.State = ConversationState.Idle;
                 await SaveChanges();
                 return;
             }
 
             _logger.LogDebug($"Impostato null come support list del Master {master.Name}");
             master.SupportList = null;
-            TelegramChat.State = (int) ConversationState.Idle;
+            master.UseRayshift = false;
+            TelegramChat.State = ConversationState.Idle;
             if (await SaveChanges()) {
                 await ReplyTextMessageAsync("Lista dei support rimossa correttamente");
             }
+        }
+
+        [ChatStateFilter(ConversationState.Idle), CommandFilter("update")]
+        public async Task UpdateRayshiftSupportList() {
+            await ReplyTextMessageAsync(
+                "Non ancora implementato, per favore, aggiornare il master manualmente da Rayshift.io");
+            // TODO Implement
         }
         
         #endregion
@@ -540,7 +751,7 @@ namespace Server.TelegramController
                 }
             }
 
-            TelegramChat.State = 0;
+            TelegramChat.State = ConversationState.Idle;
             TelegramChat.Data.Clear();
 
             if (await SaveChanges("Reset Impossibile, contattate un admin di Chaldea per avere supporto diretto")) {
@@ -644,6 +855,21 @@ namespace Server.TelegramController
             }
         }
 
+        private async Task<Dictionary<SupportListType,string>> GetSupportImageFromRayshift(Region region, string friendCode) {
+            Dictionary<SupportListType, string> images = null;
+            using (var client = new RayshiftClient(_configuration["ApiKey"])) {
+                var master = (await client.GetSupportDeck(region, friendCode))?.Response;
+                if (master != null) {
+                    images = new Dictionary<SupportListType, string>();
+                    images[SupportListType.Normal] = master.SupportList(SupportListType.Normal);
+                    images[SupportListType.Event] = master.SupportList(SupportListType.Event);
+                    images[SupportListType.Both] = master.SupportList(SupportListType.Both);
+                }
+
+                return images;
+            }
+        }
+
         private async Task<bool> SaveChanges(string text = "Errore nel salvare i dati, provare a reinviare l'ultimo messaggio") {
             bool error = false;
                 try
@@ -667,14 +893,15 @@ namespace Server.TelegramController
         }
     }
 
-    public enum ConversationState {
-        Idle = 0,
-        Nome = 1,
-        FriendCode = 2,
-        Server = 3,
-        SupportList = 4,
-        ServantList = 5,
-        UpdatingSupportList = 6,
-        UpdatingServantList = 7
+    public static class ConversationState {
+        public const string Idle = null;
+        public const string Nome = "ChaldeabotController_Nome";
+        public const string FriendCode = "ChaldeabotController_FriendCode";
+        public const string Server = "ChaldeabotController_Server";
+        public const string SupportList = "ChaldeabotController_SupportList";
+        public const string ServantList = "ChaldeabotController_ServantList";
+        public const string UpdatingSupportList = "ChaldeabotController_UpdatingSupportList";
+        public const string UpdatingServantList = "ChaldeabotController_UpdatingServantList";
+        public const string WaitingRayshift = "ChaldeabotController_WaitingRayshift";
     }
 }

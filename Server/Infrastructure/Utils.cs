@@ -1,5 +1,8 @@
 using System;
 using System.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Server.DbContext;
 
 namespace Server.Infrastructure {
     public static class Utils {
@@ -23,8 +26,18 @@ namespace Server.Infrastructure {
             else {
                 return connectionString;
             }
-            
-            
+        }
+        
+        public static IApplicationBuilder SeedData(this IApplicationBuilder app) {
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                var context = services.GetService<MasterContext>();
+ 
+                new DataSeeder(context).SeedData();
+            }
+
+            return app;
         }
     }
 }
