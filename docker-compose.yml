@@ -21,6 +21,7 @@ services:
       - db
     build:
       context: .
+      dockerfile: Server/Dockerfile
     ports:
       - "5000:5000"
 volumes:

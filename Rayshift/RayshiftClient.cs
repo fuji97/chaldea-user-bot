@@ -22,6 +22,7 @@ namespace Rayshift {
         private readonly string? _apiKey;
 
         public int MaxLookupRequests { get; set; } = 15;
+        public int RequestsInterval { get; set; } = 2000;
 
         public RayshiftClient(string? apiKey = null, string? baseAddress = null) {
             _apiKey = apiKey;
@@ -48,6 +49,36 @@ namespace Rayshift {
                 return null;
             }
         }
+        
+        public async Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode) {
+            if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
+                throw new ArgumentException("Not a valid friend code", nameof(friendCode));
+            }
+            
+            var regionInt = (int) region;
+
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["apiKey"] = _apiKey;
+            query["region"] = regionInt.ToString();
+            query["friendId"] = friendCode;
+            string fullUrl = SupportLookup + '?' + query.ToString();
+
+            var response = await _client.GetAsync(fullUrl);
+            var content = await response.Content.ReadAsStringAsync();
+            try {
+                var parsedResponse = DeserializeResponse(content);
+                if (parsedResponse.Status == 200) {
+                    return await WaitResponse(fullUrl, parsedResponse);
+                }
+
+                return parsedResponse;
+            }
+            catch {
+                // ignored
+            }
+
+            return null;
+        }
 
         public async Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null) {
             if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
@@ -69,7 +100,7 @@ namespace Rayshift {
                 if (parsedResponse.Status == 200) {
                     if (callback != null) {
 #pragma warning disable 4014
-                        WaitResult(fullUrl, parsedResponse, region, friendCode, callback);
+                        WaitAndCallCallback(fullUrl, parsedResponse, callback);
 #pragma warning restore 4014
                     }
                     return true;
@@ -82,12 +113,18 @@ namespace Rayshift {
             return false;
         }
 
-        private async Task WaitResult(string query, ApiResponse firstResponse, Region region, string friendCode, Func<ApiResponse?, Task> callback) {
+        private async Task WaitAndCallCallback(string query, ApiResponse firstResponse, Func<ApiResponse?, Task> callback) {
+            var response = await WaitResponse(query, firstResponse);
+
+            await callback.Invoke(response);
+        }
+
+        private async Task<ApiResponse?> WaitResponse(string query, ApiResponse firstResponse) {
             var response = firstResponse;
             var currentRequests = 1;
 
             while (response.Message != Finished && response.Status == 200 && currentRequests < MaxLookupRequests) {
-                Thread.Sleep(2000);
+                Thread.Sleep(RequestsInterval);
 
                 var httpResponse = await _client.GetAsync(query);
                 var content = await httpResponse.Content.ReadAsStringAsync();
@@ -102,7 +139,7 @@ namespace Rayshift {
                 currentRequests++;
             }
 
-            await callback.Invoke(response);
+            return response;
         }
 
         private static ApiResponse DeserializeResponse(string response) {

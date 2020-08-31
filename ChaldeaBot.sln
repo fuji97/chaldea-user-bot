@@ -1,12 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{15CAEF21-C5C2-4360-B8E6-1697CAD3741C}"
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "Server\Server.csproj", "{15CAEF21-C5C2-4360-B8E6-1697CAD3741C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataScraper", "DataScraper\DataScraper.csproj", "{25EEDC80-81E2-418D-9999-8FAEF72264B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataScraper", "DataScraper\DataScraper.csproj", "{25EEDC80-81E2-418D-9999-8FAEF72264B4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rayshift", "Rayshift\Rayshift.csproj", "{253D2F59-495D-4E7D-A53E-81316D5793FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rayshift", "Rayshift\Rayshift.csproj", "{253D2F59-495D-4E7D-A53E-81316D5793FE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rayshift.Test", "Rayshift.Test\Rayshift.Test.csproj", "{25794751-EEAF-4825-AA35-D65172A642CF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rayshift.Test", "Rayshift.Test\Rayshift.Test.csproj", "{25794751-EEAF-4825-AA35-D65172A642CF}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{11FB02E7-0645-41EB-9800-FC822EB95D36}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +35,15 @@ Global
 		{25794751-EEAF-4825-AA35-D65172A642CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{25794751-EEAF-4825-AA35-D65172A642CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{25794751-EEAF-4825-AA35-D65172A642CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11FB02E7-0645-41EB-9800-FC822EB95D36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11FB02E7-0645-41EB-9800-FC822EB95D36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11FB02E7-0645-41EB-9800-FC822EB95D36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11FB02E7-0645-41EB-9800-FC822EB95D36}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5116B393-29F5-4CFD-9CA7-031128E9845A}
 	EndGlobalSection
 EndGlobal

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Server.DbContext;
 using Server.Infrastructure;
+using Server.TelegramController;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.Core.Dispatcher;
 using Telegram.Bot.Advanced.Core.Holder;
@@ -36,6 +37,7 @@ namespace Server {
             services.AddTelegramHolder(new TelegramBotData(options => {
                     options.CreateTelegramBotClient(_configuration["BotKey"]);
                     options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
+                        .AddControllers(typeof(GroupController), typeof(InlineController), typeof(PrivateController))
                         .RegisterNewsletterController<MasterContext>());
                     options.BasePath = _configuration["BasePath"];
                     

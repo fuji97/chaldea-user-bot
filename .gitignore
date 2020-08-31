@@ -34,3 +34,4 @@ Desktop.ini
 .DS_Store
 Server/appsettings.Development.json
 Server/out/
+.idea/.idea.ChaldeaBot/.idea/discord.xml
