@@ -10,19 +10,23 @@ using Rayshift;
 using Rayshift.Models;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
+using Telegram.Bot.Advanced.Core.Tools;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Server.TelegramController {
     [ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
     public class GroupController : Controller {
         private ILogger<InlineController> _logger;
 
+        private ChatSettings _cachedChatSettings = null;
+
         public GroupController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger) : base(logger, cache, configuration) {
             _logger = logger;
         }
-        
+
         [CommandFilter("list"), MessageTypeFilter(MessageType.Text)]
         public async Task ListMastersInGroups() {
             _logger.LogInformation("Ricevuto comando /list in un gruppo");
@@ -35,7 +39,7 @@ namespace Server.TelegramController {
                 string.Join("\n", masters),
                 ParseMode.Html);
         }
-        
+
         [CommandFilter("link")]
         public async Task LinkMaster() {
             if (MessageCommand.Parameters.Count < 1) {
@@ -67,7 +71,7 @@ namespace Server.TelegramController {
                 }
             }
         }
-        
+
         [CommandFilter("unlink")]
         public async Task UnlinkMaster() {
             if (MessageCommand.Parameters.Count < 1) {
@@ -88,9 +92,7 @@ namespace Server.TelegramController {
             }
             else {
                 if (Update.Message.From.Id != master.Master.UserId) {
-                    var isAdmin = (await BotData.Bot.GetChatAdministratorsAsync(TelegramChat.Id))
-                        .Any(ua => ua.User.Id == Update.Message.From.Id);
-                    if (!isAdmin) {
+                    if (!await IsSenderAdmin()) {
                         await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                             "Non puoi scollegare questo utente");
                         return;
@@ -124,6 +126,133 @@ namespace Server.TelegramController {
                     await SendMaster(master);
                 }
             }
+        }
+
+        [CommandFilter("settings")]
+        public async Task GroupSettings() {
+            var settings = await GetChatSettings();
+            
+            _logger.LogInformation("Ricevuto comando /settings in un gruppo");
+            if (await IsSenderAdmin()) {
+                await ReplyTextMessageAsync(BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
+            }
+        }
+
+        #region Comandi inline
+
+        [CallbackCommandFilter(InlineKeyboardCommands.EnableSupportListNotifications, 
+            InlineKeyboardCommands.DisableSupportListNotifications,
+            InlineKeyboardCommands.EnableServantListNotifications, 
+            InlineKeyboardCommands.DisableServantListNotifications)]
+        public async Task SettingsCallback() {
+            await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+            
+            var originalMessage = Update.CallbackQuery.Message;
+            if (await IsUserAdmin(TelegramChat.Id, Update.CallbackQuery.From.Id)) {
+
+                var settings = await GetChatSettings();
+
+                switch (InlineDataWrapper.ParseInlineData(Update.CallbackQuery.Data).Command) {
+                    case InlineKeyboardCommands.EnableSupportListNotifications:
+                        settings.SupportListNotifications = true;
+                        break;
+                    case InlineKeyboardCommands.DisableSupportListNotifications:
+                        settings.SupportListNotifications = false;
+                        break;
+                    case InlineKeyboardCommands.EnableServantListNotifications:
+                        settings.ServantListNotifications = true;
+                        break;
+                    case InlineKeyboardCommands.DisableServantListNotifications:
+                        settings.ServantListNotifications = false;
+                        break;
+                }
+                
+                if (await SaveChanges()) {
+                    await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, originalMessage.MessageId, 
+                        BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
+                }
+            }
+        }
+
+        #endregion
+
+        private async Task<bool> IsSenderAdmin() {
+            return await IsUserAdmin(TelegramChat.Id, Update.Message.From.Id);
+        }
+
+        private async Task<bool> IsUserAdmin(long chatId, long userId) {
+            return (await BotData.Bot.GetChatAdministratorsAsync(chatId))
+                .Any(ua => ua.User.Id == userId);
+        }
+
+        private string BuildSettingsMessage(ChatSettings settings) {
+            var message = $"Impostazioni del gruppo {TelegramChat.Title}:\n\n" +
+                          "Notifiche aggiornamenti:\n" +
+                          $"Support list: {(settings.SupportListNotifications ? "abilitate" : "disabilitate")}\n" +
+                          $"Servant list: {(settings.ServantListNotifications ? "abilitate" : "disabilitate")}";
+
+            return message;
+        }
+
+        private InlineKeyboardMarkup BuildSettingsKeyboard(ChatSettings settings) {
+
+            var supportListNotifications = new InlineKeyboardButton();
+            if (settings.SupportListNotifications) {
+                supportListNotifications.Text = "Disabilita notifiche support list";
+                supportListNotifications.CallbackData =
+                    new InlineDataWrapper(InlineKeyboardCommands.DisableSupportListNotifications).ToString();
+            }
+            else {
+                supportListNotifications.Text = "Abilita notifiche support list";
+                supportListNotifications.CallbackData =
+                    new InlineDataWrapper(InlineKeyboardCommands.EnableSupportListNotifications).ToString();
+            }
+            
+            var servantListNotifications = new InlineKeyboardButton();
+            if (settings.ServantListNotifications) {
+                servantListNotifications.Text = "Disabilita notifiche servant list";
+                servantListNotifications.CallbackData =
+                    new InlineDataWrapper(InlineKeyboardCommands.DisableServantListNotifications).ToString();
+            }
+            else {
+                servantListNotifications.Text = "Abilita notifiche servant list";
+                servantListNotifications.CallbackData =
+                    new InlineDataWrapper(InlineKeyboardCommands.EnableServantListNotifications).ToString();
+            }
+
+            var keyboard = new InlineKeyboardMarkup(new [] {
+                supportListNotifications, servantListNotifications
+            });
+
+            return keyboard; 
+        }
+
+        private async Task<ChatSettings> GetChatSettings() {
+            if (_cachedChatSettings == null) {
+                var chatSettings =
+                    await TelegramContext.ChatSettings.FirstOrDefaultAsync(cs => cs.Id == TelegramChat.Id);
+                if (chatSettings != null) {
+                    _cachedChatSettings = chatSettings;
+                }
+                else {
+                    _cachedChatSettings = new ChatSettings() {
+                        Id = TelegramChat.Id
+                    };
+                    await TelegramContext.AddAsync(_cachedChatSettings);
+                    await SaveChanges();
+
+                    _cachedChatSettings = await TelegramContext.ChatSettings.FindAsync(_cachedChatSettings.Id);
+                }
+            }
+
+            return _cachedChatSettings;
+        }
+
+        private static class InlineKeyboardCommands {
+            public const string EnableSupportListNotifications = "EnableSupportListNotifications";
+            public const string DisableSupportListNotifications = "DisableSupportListNotifications";
+            public const string EnableServantListNotifications = "EnableServantListNotifications";
+            public const string DisableServantListNotifications = "DisableServantListNotifications";
         }
     }
 }

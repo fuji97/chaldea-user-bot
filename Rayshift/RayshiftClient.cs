@@ -8,8 +8,8 @@ using System.Web;
 using Rayshift.Models;
 
 namespace Rayshift {
-    public class RayshiftClient : IDisposable {
-        private const string BaseAddress = "https://rayshift.io";
+    public class RayshiftClient : IRayshiftClient {
+        public const string BaseAddress = "https://rayshift.io";
         private const string ApiBaseAddress = "https://rayshift.io/api/v1/";
         private const string SupportDecks = "support/decks/";
         private const string SupportLookup = "support/lookup/";

@@ -34,7 +34,7 @@ namespace Server.TelegramController {
                 return;
             }
             
-            List<ServantEntry> servants = await _cache.GetOrCreateAsync("servants", entry => {
+            List<ServantEntry> servants = await Cache.GetOrCreateAsync("servants", entry => {
                 entry.SlidingExpiration = TimeSpan.FromHours(1);
                 var scraper = new Scraper();
                 return scraper.GetAllServants();

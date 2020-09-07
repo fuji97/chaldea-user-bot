@@ -17,6 +17,7 @@ using Rayshift.Models;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
+using Telegram.Bot.Advanced.Core.Tools;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
@@ -28,13 +29,13 @@ namespace Server.TelegramController
     
     public class Controller : TelegramController<MasterContext> {
         private readonly ILogger _logger;
-        protected IMemoryCache _cache;
-        protected IConfiguration _configuration;
+        protected readonly IMemoryCache Cache;
+        protected readonly IConfiguration Configuration;
 
         public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration) {
             _logger = logger;
-            _cache = cache;
-            _configuration = configuration;
+            Cache = cache;
+            Configuration = configuration;
         }
 
         public Controller() {
@@ -64,6 +65,7 @@ namespace Server.TelegramController
                                         "/link &lt;nome&gt; - Collega il Master alla chat, in modo che possa essere visualizzato con il comando /master\n" +
                                         "/master &lt;nome&gt; - Visualizza le informazioni del Master (se è collegato)\n" +
                                         "/unlink &lt;nome&gt; - Scollega il Master (gli admin possono scollegare qualsiasi Master)\n" +
+                                        "/settings - [SOLO ADMIN] Apre le impostazioni per il gruppo\n" +
                                         "/reset - [SOLO ADMIN] - Resetta lo stato del bot e cancella i dati temporanei (non cancella i Master collegati), da usare solo se il bot da errori ESPLICITI; da NON usare se semplicemente non risponde\n" +
                                         "\n" +
                                         "[OVUNQUE]\n" +
@@ -102,7 +104,7 @@ namespace Server.TelegramController
                 return;
             }
 
-            List<ServantEntry> servants = await _cache.GetOrCreateAsync("servants", entry => {
+            List<ServantEntry> servants = await Cache.GetOrCreateAsync("servants", entry => {
                 entry.SlidingExpiration = TimeSpan.FromHours(1);
                 var scraper = new Scraper();
                 return scraper.GetAllServants();
@@ -129,6 +131,7 @@ namespace Server.TelegramController
         
         protected async Task SendMaster(Master master) {
             var album = new List<IAlbumInputMedia>();
+            var loadingMessage = await ReplyTextMessageAsync("Caricamento delle informazioni da Rayshift, attendere...");
             
             if (master.UseRayshift) {
                 var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
@@ -139,7 +142,7 @@ namespace Server.TelegramController
                 }
                 else {
                     _logger.LogError("Errore nell'ottenere la support list di {master} da rayshift.io", master.ToString());
-                    await ReplyTextMessageAsync("Errore nell'ottenere la support list da Rayshift.io");
+                    await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Errore nell'ottenere la support list da Rayshift.io");
                 }
             } else if (master.SupportList != null) {
                 album.Add(new InputMediaPhoto(new InputMedia(master.SupportList)));
@@ -149,19 +152,43 @@ namespace Server.TelegramController
                 album.Add(new InputMediaPhoto(new InputMedia(master.ServantList)));
             }
 
-            await BotData.Bot.SendMediaGroupAsync(album, TelegramChat.Id);
+            if (album.Any()) {
+                await BotData.Bot.SendMediaGroupAsync(album, TelegramChat.Id);
+            }
 
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                $"<b>Master:</b> {master.Name}\n" +
-                $"<b>Friend Code:</b> {master.FriendCode}\n" +
-                $"<b>Server:</b> {master.Server.ToString()}\n" +
-                $"<b>Registrato da:</b> <a href=\"tg://user?id={master.UserId}\">@{master.User.Username}</a>",
-                ParseMode.Html);
+            var messageText = $"<b>Master:</b> {master.Name}\n" +
+                              $"<b>Friend Code:</b> {master.FriendCode}\n" +
+                              $"<b>Server:</b> {master.Server.ToString()}\n" +
+                              $"<b>Registrato da:</b> <a href=\"tg://user?id={master.UserId}\">@{master.User.Username}</a>";
+
+            if (master.UseRayshift) {
+                messageText += $"\n\n<a href=\"{BuildRayshiftUrl(master)}\">Rayshift.io</a>";
+            }
+
+            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, messageText, ParseMode.Html, true);
+            await BotData.Bot.DeleteMessageAsync(TelegramChat.ToChatId(), loadingMessage.MessageId);
+        }
+
+        protected Uri BuildRayshiftUrl(Master master) {
+            var uriBuilder =
+                new UriBuilder(RayshiftClient.BaseAddress) {
+                    Path = $"{ServerToString(master.Server)}/{master.FriendCode}"
+                };
+
+            return uriBuilder.Uri;
+        }
+
+        protected string ServerToString(MasterServer server) {
+            return server switch {
+                MasterServer.Jp => "jp",
+                MasterServer.Na => "na",
+                _ => throw new ArgumentOutOfRangeException(nameof(server), server, null)
+            };
         }
 
         protected async Task<Dictionary<SupportListType,string>> GetSupportImageFromRayshift(Region region, string friendCode) {
             Dictionary<SupportListType, string> images = null;
-            using (var client = new RayshiftClient(_configuration["ApiKey"])) {
+            using (var client = new RayshiftClient(Configuration["ApiKey"])) {
                 var master = (await client.GetSupportDeck(region, friendCode))?.Response;
                 if (master != null) {
                     images = new Dictionary<SupportListType, string>();
@@ -182,10 +209,10 @@ namespace Server.TelegramController
         protected static Region ServerToRegion(MasterServer server) {
             Region region = Region.Na;
             switch (server) {
-                case MasterServer.JP:
+                case MasterServer.Jp:
                     region = Region.Jp;
                     break;
-                case MasterServer.US:
+                case MasterServer.Na:
                     region = Region.Na;
                     break;
             }
@@ -213,6 +240,23 @@ namespace Server.TelegramController
                     throw;
                 }
             return !error;
+        }
+
+        protected async Task<Master> GetMasterFromCallbackData() {
+            if (Update?.CallbackQuery?.Data == null || Update.CallbackQuery.Message?.From?.Id == null) {
+                return null;
+            }
+
+            var masterName = InlineDataWrapper.ParseInlineData(Update.CallbackQuery.Data).Data["master"];
+            if (masterName == null) {
+                return null;
+            }
+
+            var master =
+                await TelegramContext.Masters.FirstOrDefaultAsync(m =>
+                    m.Name == masterName && m.UserId == Update.CallbackQuery.Message.Chat.Id);
+
+            return master;
         }
     }
 

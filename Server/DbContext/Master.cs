@@ -60,7 +60,7 @@ namespace Server.DbContext
     }
 
     public enum MasterServer {
-        US = 0,
-        JP = 1
+        Na = 0,
+        Jp = 1
     }
 }

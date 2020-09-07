@@ -1,13 +1,12 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Rayshift;
 using Server.DbContext;
 using Server.Infrastructure;
 using Server.TelegramController;
@@ -17,19 +16,25 @@ using Telegram.Bot.Advanced.Core.Holder;
 using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Extensions;
 using Telegram.Bot.Advanced.Models;
+using Telegram.Bot.Advanced.Services;
+using Telegram.Bot.Types.Enums;
 using Controller = Server.TelegramController.Controller;
 
 namespace Server {
     public class Startup {
         private readonly IConfiguration _configuration;
         private readonly ILogger<Dispatcher<MasterContext, Controller>> _logger;
+        private readonly string _version;
 
         public Startup(IConfiguration configuration, ILogger<Dispatcher<MasterContext,Controller>> logger) {
             _configuration = configuration;
             _logger = logger;
+
+            _version = GetType().Assembly.GetName().Version?.ToString();
         }
         
         public void ConfigureServices(IServiceCollection services) {
+            _logger.LogInformation($"ChaldeaBot v{_version}");
             _logger.LogInformation($"Listening on bot [{_configuration["BotKey"]}] on path {_configuration["BasePath"]}");
             
             services.AddDbContext<MasterContext>(
@@ -39,13 +44,27 @@ namespace Server {
                     options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
                         .AddControllers(typeof(GroupController), typeof(InlineController), typeof(PrivateController))
                         .RegisterNewsletterController<MasterContext>());
+                    
                     options.BasePath = _configuration["BasePath"];
                     
                     options.DefaultUserRole.Add(
                         new UserRole("fuji97", ChatRole.Administrator));
+                    
+                    options.StartupNewsletter = new StartupNewsletter("startup", async (data, chat, service) => {
+                        var startupText = $"<i>ChaldeaBot avviato\n\nVersione: v{_version}</i>";
+                        
+                        await data.Bot.SendTextMessageAsync(chat.Id,
+                            startupText, ParseMode.Html);
+                    });
                     })
             );
-            
+
+            services.AddNewsletter<MasterContext>();
+
+            services.AddSingleton<IRayshiftClient, RayshiftClient>(serv => {
+                var configuration = serv.GetRequiredService<IConfiguration>();
+                return new RayshiftClient(configuration["Rayshift:ApiKey"]);
+            });
             services.AddMemoryCache();
             services.AddControllersWithViews();
         }
@@ -75,6 +94,9 @@ namespace Server {
                     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
                 });
             }
+            
+            _logger.LogInformation("Sending startup newsletters.");
+            app.UseStartupNewsletter();
 
             if (env.IsDevelopment()) {
                 _logger.LogInformation("Development. Starting in Polling mode.");
@@ -85,7 +107,7 @@ namespace Server {
                 _logger.LogInformation("Production. Listening to Telegram requests.");
                 app.UseTelegramRouting();
             }
-
+            
             app.UseRouting();
             app.UseEndpoints(endpoints => {
                 endpoints.MapControllerRoute(

@@ -12,6 +12,7 @@ namespace Server.Infrastructure {
         public void SeedData() {
             _context.Newsletters.Add(new Newsletter("startup", "Ricevi una notifica quando il bot viene avviato"));
             _context.Newsletters.Add(new Newsletter("update", "Ricevi una notifica quando il bot viene aggiornato"));
+            _context.Newsletters.Add(new Newsletter("shutdown", "Ricevi una notifica quando il bot viene stoppato"));
         }
     }
 }

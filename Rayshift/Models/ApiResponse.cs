@@ -1,7 +1,11 @@
 using System.Text.Json.Serialization;
 
 namespace Rayshift.Models {
-    public class ApiResponse {
+    public partial class ApiResponse {
+        public const string InQueue = "in queue";
+        public const string Processing = "processing";
+        public const string Finished = "finished";
+        
         [JsonPropertyName("status")]
         public int Status { get; set; }
         [JsonPropertyName("response")]
@@ -10,5 +14,16 @@ namespace Rayshift.Models {
         public string Message { get; set; }
         [JsonPropertyName("wait")]
         public int? Wait { get; set; }
+
+        public MessageCode MessageType {
+            get {
+                return Message switch {
+                    InQueue => MessageCode.InQueue,
+                    Processing => MessageCode.Processing,
+                    Finished => MessageCode.Finished,
+                    _ => MessageCode.Other
+                };
+            }
+        }
     }
 }
