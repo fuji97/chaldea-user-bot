@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Telegram.Bot.Advanced.DbContexts;
-using Telegram.Bot.Advanced.Models;
 
 namespace Server.DbContext
 {

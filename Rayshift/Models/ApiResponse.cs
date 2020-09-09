@@ -11,7 +11,7 @@ namespace Rayshift.Models {
         [JsonPropertyName("response")]
         public ApiMaster? Response { get; set; }
         [JsonPropertyName("message")]
-        public string Message { get; set; }
+        public string? Message { get; set; }
         [JsonPropertyName("wait")]
         public int? Wait { get; set; }
 

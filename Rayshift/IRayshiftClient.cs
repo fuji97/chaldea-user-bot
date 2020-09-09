@@ -7,6 +7,5 @@ namespace Rayshift {
         Task<ApiResponse?> GetSupportDeck(Region region, string friendCode);
         Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode);
         Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null);
-        void Dispose();
     }
 }

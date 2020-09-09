@@ -11,15 +11,15 @@ namespace Rayshift.Models {
         [JsonConverter(typeof(TimestampConverter))]
         public DateTimeOffset LastUpdate { get; set; }
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
         [JsonPropertyName("code")]
-        public string Code { get; set; }
+        public string? Code { get; set; }
         [JsonPropertyName("lastLogin")]
         [JsonConverter(typeof(TimestampConverter))]
         public DateTimeOffset LastLogin { get; set; }
         [JsonPropertyName("decks")] 
-        public Dictionary<string, string> Decks { get; set; }
-        public string BaseAddress { get; set; }
+        public Dictionary<string, string> Decks { get; set; } = new Dictionary<string, string>();
+        public string? BaseAddress { get; set; }
 
         public string? ImagesBaseUrl => GetImagesBaseUrl();
 

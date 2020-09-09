@@ -45,7 +45,7 @@ namespace Rayshift {
                 var parsedResponse = DeserializeResponse(content);
                 return parsedResponse;
             }
-            catch (Exception e) {
+            catch (Exception) {
                 return null;
             }
         }

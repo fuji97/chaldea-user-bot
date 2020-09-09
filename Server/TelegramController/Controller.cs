@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DataScraper;
 using DataScraper.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,9 +18,6 @@ using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Core.Tools;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InlineQueryResults;
-using Telegram.Bot.Types.InputFiles;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Server.TelegramController
 {
@@ -48,7 +43,7 @@ namespace Server.TelegramController
                                         "Attualmente questo bot può permettervi di registrare un Master (in privato) " +
                                         "inviandomi le sue informazioni. Dopo che è stato registrato correttamente " +
                                         "potete collegarlo in una qualsasi chat in cui è presente questo bot in modo " +
-                                        "da poter inviare velocemente il Master in qualsiasi momento\n" +
+                                        "da poter inviare velocemente il Master in qualsiasi momento.\n" +
                                         "\n" +
                                         "<b>Lista dei comandi:</b>\n" +
                                         "[IN PRIVATO]\n" +
@@ -71,21 +66,18 @@ namespace Server.TelegramController
                                         "[OVUNQUE]\n" +
                                         "/help - Mostra questo messaggio\n" +
                                         "\n" +
-                                        "Bot creato da @fuji97",
+                                        "Bot creato da @fuji97\n" +
+                                        "Per segnalare errori o proporre miglioramenti visitare la sezione <a href=\"https://github.com/fuji97/chaldea-user-bot/issues\">Issues su GitHub</a>",
                 ParseMode.Html);
         }
 
         [CommandFilter("reset")]
         public async Task ResetState() {
             if (Update.Message.Chat.Type == ChatType.Group || Update.Message.Chat.Type == ChatType.Supergroup) {
-                if (!Update.Message.Chat.AllMembersAreAdministrators) {
-                    if ((await BotData.Bot.GetChatAdministratorsAsync(TelegramChat.Id))
-                        .All(cm => cm.User != Update.Message.From)) {
-
-                        await ReplyTextMessageAsync(
-                            "Solo gli admin possono resettare lo stato di Chaldea in un gruppo");
-                        return;
-                    }
+                if (!await IsSenderAdmin()) {
+                    await ReplyTextMessageAsync(
+                        "Solo gli admin possono resettare lo stato di Chaldea in un gruppo");
+                    return;
                 }
             }
 
@@ -257,6 +249,15 @@ namespace Server.TelegramController
                     m.Name == masterName && m.UserId == Update.CallbackQuery.Message.Chat.Id);
 
             return master;
+        }
+        
+        protected async Task<bool> IsSenderAdmin() {
+            return await IsUserAdmin(TelegramChat.Id, Update.Message.From.Id);
+        }
+
+        protected async Task<bool> IsUserAdmin(long chatId, long userId) {
+            return (await BotData.Bot.GetChatAdministratorsAsync(chatId))
+                .Any(ua => ua.User.Id == userId);
         }
     }
 
