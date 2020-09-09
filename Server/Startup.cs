@@ -39,7 +39,7 @@ namespace Server {
             _logger.LogInformation($"Listening on bot [{_configuration["BotKey"]}] on path {_configuration["BasePath"]}");
             
             services.AddDbContext<MasterContext>(
-                options => options.UseNpgsql(_configuration["CONNECTION_STRING"]));
+                options => options.UseNpgsql(_configuration["ConnectionString"]));
             services.AddTelegramHolder(new TelegramBotData(options => {
                     options.CreateTelegramBotClient(_configuration["BotKey"]);
                     options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()

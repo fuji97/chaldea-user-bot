@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Server.Infrastructure;
-using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.DbContexts;
 
 namespace Server.DbContext
@@ -18,7 +17,7 @@ namespace Server.DbContext
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
             base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseNpgsql(Utils.ConnectionStringFromUri(_configuration["CONNECTION_STRING"]));
+            optionsBuilder.UseNpgsql(Utils.ConnectionStringFromUri(_configuration["ConnectionString"]));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {

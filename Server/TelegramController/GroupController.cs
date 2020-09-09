@@ -1,19 +1,14 @@
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Rayshift;
-using Rayshift.Models;
+using Rayshift.Utils;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Core.Tools;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Server.TelegramController {
@@ -48,11 +43,11 @@ namespace Server.TelegramController {
             }
             else {
                 var master = TelegramContext.Masters.FirstOrDefault(m =>
-                    m.User.Id == Update.Message.From.Id && m.Name == MessageCommand.Parameters.Join(" "));
+                    m.User.Id == Update.Message.From.Id && m.Name == MessageCommand.Parameters.JoinStrings(" "));
 
                 if (master == null) {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
+                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
                 }
                 else {
                     var chat = TelegramContext.RegisteredChats.FirstOrDefault(c =>
@@ -79,7 +74,7 @@ namespace Server.TelegramController {
                     "Devi passarmi il nome del master che vuoi scollegare");
             }
 
-            var name = MessageCommand.Parameters.Join(" ");
+            var name = MessageCommand.Parameters.JoinStrings(" ");
             
             var master = await TelegramContext.RegisteredChats
                 .Include(c => c.Master)
@@ -117,10 +112,10 @@ namespace Server.TelegramController {
             else {
                 var master = TelegramContext.Masters
                     .Include(m => m.RegisteredChats)
-                    .Include(m => m.User).SingleOrDefault(m => m.Name == MessageCommand.Parameters.Join(" "));
+                    .Include(m => m.User).SingleOrDefault(m => m.Name == MessageCommand.Parameters.JoinStrings(" "));
                 if (master == null || master.RegisteredChats.All(c => c.ChatId != TelegramChat.Id)) {
                     await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
-                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.Join(" "));
+                        "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
                 }
                 else {
                     await SendMaster(master);
@@ -175,15 +170,6 @@ namespace Server.TelegramController {
         }
 
         #endregion
-
-        private async Task<bool> IsSenderAdmin() {
-            return await IsUserAdmin(TelegramChat.Id, Update.Message.From.Id);
-        }
-
-        private async Task<bool> IsUserAdmin(long chatId, long userId) {
-            return (await BotData.Bot.GetChatAdministratorsAsync(chatId))
-                .Any(ua => ua.User.Id == userId);
-        }
 
         private string BuildSettingsMessage(ChatSettings settings) {
             var message = $"Impostazioni del gruppo {TelegramChat.Title}:\n\n" +

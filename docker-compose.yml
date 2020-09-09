@@ -11,10 +11,11 @@ services:
     restart: always
     ports:
     - "5432:5432"
+    container_name: chaldeabot_db
   chaldeabot:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - CONNECTION_STRING=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
+      - ConnectionString=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
       - ASPNETCORE_URLS=http://*:5000
       - USE_FORWARDED_HEADERS=true
     depends_on:
@@ -24,6 +25,7 @@ services:
       dockerfile: Server/Dockerfile
     ports:
       - "5000:5000"
+    container_name: chaldeabot_bot
 volumes:
   dbdata:
     

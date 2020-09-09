@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rayshift.Test", "Rayshift.T
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{11FB02E7-0645-41EB-9800-FC822EB95D36}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E785631F-E433-49AD-86A5-446E00ED4B7E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,5 +47,11 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5116B393-29F5-4CFD-9CA7-031128E9845A}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{25EEDC80-81E2-418D-9999-8FAEF72264B4} = {E785631F-E433-49AD-86A5-446E00ED4B7E}
+		{253D2F59-495D-4E7D-A53E-81316D5793FE} = {E785631F-E433-49AD-86A5-446E00ED4B7E}
+		{25794751-EEAF-4825-AA35-D65172A642CF} = {E785631F-E433-49AD-86A5-446E00ED4B7E}
+		{15CAEF21-C5C2-4360-B8E6-1697CAD3741C} = {E785631F-E433-49AD-86A5-446E00ED4B7E}
 	EndGlobalSection
 EndGlobal
