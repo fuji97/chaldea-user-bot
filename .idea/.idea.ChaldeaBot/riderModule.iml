@@ -9,7 +9,18 @@
     <content url="file://$USER_HOME$/.nuget/packages/nunit3testadapter/3.17.0/build/netcoreapp2.1/nunit.engine.api.dll" />
     <content url="file://$USER_HOME$/.nuget/packages/nunit3testadapter/3.17.0/build/netcoreapp2.1/nunit.engine.core.dll" />
     <content url="file://$USER_HOME$/.nuget/packages/nunit3testadapter/3.17.0/build/netcoreapp2.1/nunit.engine.dll" />
-    <content url="file://$MODULE_DIR$/../.." />
+    <content url="file://$MODULE_DIR$/../..">
+      <excludeFolder url="file://$MODULE_DIR$/../../.vs" />
+      <excludeFolder url="file://$MODULE_DIR$/../../obj" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/DataScraper/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/DataScraper/obj" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Rayshift.Test/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Rayshift.Test/obj" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Rayshift/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Rayshift/obj" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Server/bin" />
+      <excludeFolder url="file://$MODULE_DIR$/../../src/Server/obj" />
+    </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

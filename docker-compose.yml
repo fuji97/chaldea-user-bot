@@ -21,7 +21,7 @@ services:
     depends_on:
       - db
     build:
-      context: .
+      context: src/
       dockerfile: Server/Dockerfile
     ports:
       - "5000:5000"
