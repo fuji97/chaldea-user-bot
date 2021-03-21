@@ -60,7 +60,7 @@ namespace Server {
                             await data.Bot.SendTextMessageAsync(chat.Id,
                                 startupText, ParseMode.Html);
                         }
-                        catch (ApiRequestException e) {
+                        catch (Exception e) {
                             Console.WriteLine(e);
                             throw;
                         }
