@@ -53,18 +53,18 @@ namespace Server {
                     options.DefaultUserRole.Add(
                         new UserRole("fuji97", ChatRole.Administrator));
                     
-                    options.StartupNewsletter = new StartupNewsletter("startup", async (data, chat, service) => {
-                        var startupText = $"<i>ChaldeaBot avviato\n\nVersione: v{_version}</i>";
-
-                        try {
-                            await data.Bot.SendTextMessageAsync(chat.Id,
-                                startupText, ParseMode.Html);
-                        }
-                        catch (Exception e) {
-                            Console.WriteLine(e);
-                            throw;
-                        }
-                    });
+                    // options.StartupNewsletter = new StartupNewsletter("startup", async (data, chat, service) => {
+                    //     var startupText = $"<i>ChaldeaBot avviato\n\nVersione: v{_version}</i>";
+                    //
+                    //     try {
+                    //         await data.Bot.SendTextMessageAsync(chat.Id,
+                    //             startupText, ParseMode.Html);
+                    //     }
+                    //     catch (Exception e) {
+                    //         Console.WriteLine(e);
+                    //         throw;
+                    //     }
+                    // });
                     })
             );
             
