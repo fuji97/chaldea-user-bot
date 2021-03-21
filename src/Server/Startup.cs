@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -18,6 +19,7 @@ using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Extensions;
 using Telegram.Bot.Advanced.Models;
 using Telegram.Bot.Advanced.Services;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types.Enums;
 using Controller = Server.TelegramController.Controller;
 
@@ -53,9 +55,15 @@ namespace Server {
                     
                     options.StartupNewsletter = new StartupNewsletter("startup", async (data, chat, service) => {
                         var startupText = $"<i>ChaldeaBot avviato\n\nVersione: v{_version}</i>";
-                        
-                        await data.Bot.SendTextMessageAsync(chat.Id,
-                            startupText, ParseMode.Html);
+
+                        try {
+                            await data.Bot.SendTextMessageAsync(chat.Id,
+                                startupText, ParseMode.Html);
+                        }
+                        catch (ApiRequestException e) {
+                            Console.WriteLine(e);
+                            throw;
+                        }
                     });
                     })
             );
