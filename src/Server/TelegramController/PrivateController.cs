@@ -13,6 +13,7 @@ using Rayshift.Utils;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Core.Tools;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -602,7 +603,12 @@ namespace Server.TelegramController {
             var chats = await GetRegisteredChatWithSettings(master);
 
             foreach (var chat in chats.Where(chat => chat.Settings.SupportListNotifications)) {
-                await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, ParseMode.Html);
+                try {
+                    await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, ParseMode.Html);
+                }
+                catch (ApiRequestException e) {
+                    _logger.LogWarning(e.Message);
+                }
             }
         }
 
@@ -610,7 +616,12 @@ namespace Server.TelegramController {
             var chats = await GetRegisteredChatWithSettings(master);
 
             foreach (var chat in chats.Where(chat => chat.Settings.ServantListNotifications)) {
-                await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, ParseMode.Html);
+                try {
+                    await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, ParseMode.Html);
+                }
+                catch (ApiRequestException e) {
+                    _logger.LogWarning(e.Message);
+                }
             }
         }
 
