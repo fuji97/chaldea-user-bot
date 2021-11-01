@@ -10,6 +10,7 @@ using Rayshift.Models;
 namespace Rayshift {
     public class RayshiftClient : IRayshiftClient {
         public const string BaseAddress = "https://rayshift.io";
+        public const string ImagesPath = "static/images/deck-gen/";
         private const string ApiBaseAddress = "https://rayshift.io/api/v1/";
         private const string SupportDecks = "support/decks/";
         private const string SupportLookup = "support/lookup/";
@@ -37,7 +38,7 @@ namespace Rayshift {
                 throw new ArgumentException("Not a valid friend code", nameof(friendCode));
             }
             
-            var regionStr = StringRegion(region);
+            var regionStr = Utils.Utils.StringRegion(region);
 
             var response = await _client.GetAsync($"{SupportDecks}{regionStr}/{friendCode}");
             var content = await response.Content.ReadAsStringAsync();
@@ -149,17 +150,6 @@ namespace Rayshift {
             }
 
             return parsedResponse;
-        }
-
-        private string StringRegion(Region region) {
-            switch (region) {
-                case Region.Jp:
-                    return "jp";
-                case Region.Na:
-                    return "na";
-            }
-
-            return "";
         }
 
         public void Dispose() {

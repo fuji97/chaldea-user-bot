@@ -17,31 +17,20 @@ namespace Rayshift.Models {
         [JsonPropertyName("lastLogin")]
         [JsonConverter(typeof(TimestampConverter))]
         public DateTimeOffset LastLogin { get; set; }
+        [JsonPropertyName("guid")]
+        public string? Guid { get; set; }
         [JsonPropertyName("decks")] 
         public Dictionary<string, string> Decks { get; set; } = new Dictionary<string, string>();
         public string? BaseAddress { get; set; }
 
         public string? ImagesBaseUrl => GetImagesBaseUrl();
 
-        public string SupportList(SupportListType supportListType, bool transparent = true) {
-            var url = BaseAddress + ImagesBaseUrl;
-            switch (supportListType) {
-                case SupportListType.Normal:
-                    url += "normal";
-                    break;
-                case SupportListType.Event:
-                    url += "event";
-                    break;
-                case SupportListType.Both:
-                    url += "both";
-                    break;
-            }
-
-            if (transparent) {
-                url += "_t";
-            }
-
-            return url + ".png";
+        public string SupportList(Region region,
+            SupportLists supportLists = SupportLists.Normal1 | SupportLists.Normal2 | 
+                                                              SupportLists.Normal3 | SupportLists.Event1 | 
+                                                              SupportLists.Event2 | SupportLists.Event3, 
+            ImageFlags flags = ImageFlags.None) {
+            return Utils.Utils.BuildImageUrl(region, Code!, Guid!, (int) supportLists, (int) flags);
         }
 
         private string GetImagesBaseUrl() {

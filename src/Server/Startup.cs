@@ -113,7 +113,10 @@ namespace Server {
             _logger.LogInformation("Sending startup newsletters.");
             app.UseStartupNewsletter();
 
-            if (env.IsDevelopment()) {
+            if (_configuration.GetValue<bool>("WEBHOOK")) {
+                _logger.LogInformation("WEBHOOK variable set. Listening to Telegram requests.");
+                app.UseTelegramRouting();
+            } else if (env.IsDevelopment()) {
                 _logger.LogInformation("Development. Starting in Polling mode.");
                 app.UseDeveloperExceptionPage();
                 app.UseTelegramPolling();

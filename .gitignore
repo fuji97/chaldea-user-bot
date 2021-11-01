@@ -37,3 +37,4 @@ Server/out/
 .idea/.idea.ChaldeaBot/.idea/discord.xml
 /bin/
 /Server/appsettings.Production.json
+docker-compose.credentials.yml

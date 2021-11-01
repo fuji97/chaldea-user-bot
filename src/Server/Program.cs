@@ -15,6 +15,7 @@ namespace Server {
                 .AddJsonFile(path: "appsettings.json", false, true)
                 .AddJsonFile(path: $"appsettings.{env}.json", true, true)
                 .AddEnvironmentVariables()
+                .AddUserSecrets<Program>()
                 .Build();
             
             Log.Logger = new LoggerConfiguration()

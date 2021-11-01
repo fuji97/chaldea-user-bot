@@ -14,6 +14,7 @@ using Server.DbContext;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Core.Tools;
 using Telegram.Bot.Exceptions;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -146,18 +147,23 @@ namespace Server.TelegramController {
 
             Region region = ServerToRegion((MasterServer) Int32.Parse(TelegramChat["server"]));
 
-            using (var client = new RayshiftClient(Configuration["ApiKey"])) {
+            using (var client = new RayshiftClient(Configuration["Rayshift:ApiKey"])) {
                 var result = await client.RequestSupportLookupAsync(region, TelegramChat["friend_code"]);
                 
-                if (result?.Response != null) {
+                if (result?.Response != null && result.Status == 200) {
                     TelegramChat["support_photo"] = null;
                     TelegramChat["use_rayshift"] = "true";
                     TelegramChat.State = ConversationState.ServantList;
                     if (await SaveChanges()) {
                         await ReplyTextMessageAsync(
                             "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
-                        await ReplyPhotoAsync(
-                            new InputOnlineFile(new Uri(result.Response.SupportList(SupportListType.Both))));
+                        try {
+                            await ReplyPhotoAsync(
+                                new InputOnlineFile(new Uri(result.Response.SupportList(region))));
+                        } catch (ApiRequestException e) {
+                            Console.WriteLine(result.Response.SupportList(region));
+                            throw;
+                        }
                         await ReplyTextMessageAsync(
                             "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n" +
                             "Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase. Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
@@ -421,7 +427,7 @@ namespace Server.TelegramController {
                     await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
                         "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
                     await ReplyPhotoAsync(
-                        new InputOnlineFile(new Uri(response.Response!.SupportList(SupportListType.Both))));
+                        new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
                     await ReplyTextMessageAsync(
                         "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
                     
@@ -543,7 +549,7 @@ namespace Server.TelegramController {
                         await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
                             "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
                         await ReplyPhotoAsync(
-                            new InputOnlineFile(new Uri(response.Response!.SupportList(SupportListType.Both))));
+                            new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
                         await ReplyTextMessageAsync(
                             "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
                         await SendSupportListUpdateNotifications(master,
