@@ -148,30 +148,38 @@ namespace Server.TelegramController {
             Region region = ServerToRegion((MasterServer) Int32.Parse(TelegramChat["server"]));
 
             using (var client = new RayshiftClient(Configuration["Rayshift:ApiKey"])) {
-                var result = await client.RequestSupportLookupAsync(region, TelegramChat["friend_code"]);
-                
-                if (result?.Response != null && result.Status == 200) {
-                    TelegramChat["support_photo"] = null;
-                    TelegramChat["use_rayshift"] = "true";
-                    TelegramChat.State = ConversationState.ServantList;
-                    if (await SaveChanges()) {
-                        await ReplyTextMessageAsync(
-                            "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
-                        try {
-                            await ReplyPhotoAsync(
-                                new InputOnlineFile(new Uri(result.Response.SupportList(region))));
-                        } catch (ApiRequestException e) {
-                            Console.WriteLine(result.Response.SupportList(region));
-                            throw;
+                try {
+                    var result = await client.RequestSupportLookupAsync(region, TelegramChat["friend_code"]);
+                    
+                    if (result?.Response != null && result.Status == 200) {
+                        TelegramChat["support_photo"] = null;
+                        TelegramChat["use_rayshift"] = "true";
+                        TelegramChat.State = ConversationState.ServantList;
+                        if (await SaveChanges()) {
+                            await ReplyTextMessageAsync(
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                            try {
+                                await ReplyPhotoAsync(
+                                    new InputOnlineFile(new Uri(result.Response.SupportList(region))));
+                            } catch (ApiRequestException e) {
+                                Console.WriteLine(result.Response.SupportList(region));
+                                throw;
+                            }
+                            await ReplyTextMessageAsync(
+                                "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n" +
+                                "Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase. Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
                         }
-                        await ReplyTextMessageAsync(
-                            "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n" +
-                            "Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase. Ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+                    } else {
+                        await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
+                                                    "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
                     }
-                } else {
+                } catch (Exception e) {
                     await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
                                                 "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
+                    _logger.LogWarning($"Error while requesting support lookup of {TelegramChat["friend_code"]}", e);
                 }
+                
+                
             }
         }
 
@@ -418,24 +426,31 @@ namespace Server.TelegramController {
             var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
 
             var region = ServerToRegion(master.Server);
-            
-            var response = await SetupRayshift(region, master);
 
-            if (response != null) {
-                TelegramChat.State = ConversationState.Idle;
-                if (await SaveChanges()) {
-                    await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
-                        "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
-                    await ReplyPhotoAsync(
-                        new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
-                    await ReplyTextMessageAsync(
-                        "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
+            try {
+                var response = await SetupRayshift(region, master);
+
+                if (response != null) {
+                    TelegramChat.State = ConversationState.Idle;
+                    if (await SaveChanges()) {
+                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                            "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                        await ReplyPhotoAsync(
+                            new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
+                        await ReplyTextMessageAsync(
+                            "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
                     
-                    await SendSupportListUpdateNotifications(master,
-                        $"<i>Il Master {master.Name} ha abilitato Rayshift</i>");
+                        await SendSupportListUpdateNotifications(master,
+                            $"<i>Il Master {master.Name} ha abilitato Rayshift</i>");
+                    }
                 }
-            }
-            else {
+                else {
+                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
+                                                "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
+                }
+            } catch (Exception e) {
+                // TODO Merge errors
+                _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
                 await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
                                             "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
             }
@@ -541,23 +556,30 @@ namespace Server.TelegramController {
                 var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
 
                 var region = ServerToRegion(master.Server);
-            
-                var response = await SetupRayshift(region, master);
 
-                if (response != null) {
-                    if (await SaveChanges()) {
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
-                            "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
-                        await ReplyPhotoAsync(
-                            new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
-                        await ReplyTextMessageAsync(
-                            "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
-                        await SendSupportListUpdateNotifications(master,
-                            $"<i>Il Master {master.Name} ha abilitato Rayshift</i>");
+                try {
+                    var response = await SetupRayshift(region, master);
+
+                    if (response != null) {
+                        if (await SaveChanges()) {
+                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                            await ReplyPhotoAsync(
+                                new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
+                            await ReplyTextMessageAsync(
+                                "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
+                            await SendSupportListUpdateNotifications(master,
+                                $"<i>Il Master {master.Name} ha abilitato Rayshift</i>");
+                        }
                     }
-                }
-                else {
-                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n");
+                    else {
+                        await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n");
+                    }
+                } catch (Exception e) {
+                    // TODO Merge errors
+                    _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
+                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
+                                                "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
                 }
             }
         }
@@ -635,12 +657,18 @@ namespace Server.TelegramController {
             var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
                 "Aggiornamento della support list, attendere...");
 
-            var response = await _rayshiftClient.RequestSupportLookupAsync(ServerToRegion(master.Server), master.FriendCode);
-            if (response?.MessageType == MessageCode.Finished) {
+            try {
+                var response = await _rayshiftClient.RequestSupportLookupAsync(ServerToRegion(master.Server), master.FriendCode);
+                if (response?.MessageType == MessageCode.Finished) {
+                    await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                        "Aggiornamento completato");
+                    await SendSupportListUpdateNotifications(master,
+                        $"<i>La Support list del Master {master.Name} è stata aggiornata (via Rayshift)</i>");
+                }
+            } catch (Exception e) {
+                _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
                 await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
-                    "Aggiornamento completato");
-                await SendSupportListUpdateNotifications(master,
-                    $"<i>La Support list del Master {master.Name} è stata aggiornata (via Rayshift)</i>");
+                    "Errore durante l'ottenimento della nuova support list.");
             }
         }
 
