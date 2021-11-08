@@ -761,7 +761,7 @@ namespace Server.TelegramController {
 
             if (response.MessageType != MessageCode.Finished) {
                 // TODO Use better exceptions
-                throw new Exception($"Support lookup response message type is not finished ({response.MessageType})");
+                throw new Exception($"Support lookup response message type is not finished ({response.MessageType} [{(int) response.MessageType}])");
             }
             
             master.UseRayshift = true;
