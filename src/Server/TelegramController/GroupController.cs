@@ -32,7 +32,8 @@ namespace Server.TelegramController {
             await ReplyTextMessageAsync(
                 "<b>Lista dei Master registrati:</b>\n" +
                 string.Join("\n", masters),
-                ParseMode.Html);
+                ParseMode.Html,
+                disableNotification: true);
         }
 
         [CommandFilter("link")]

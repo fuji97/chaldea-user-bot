@@ -126,15 +126,19 @@ namespace Server.TelegramController
             var loadingMessage = await ReplyTextMessageAsync("Caricamento delle informazioni da Rayshift, attendere...");
             
             if (master.UseRayshift) {
-                var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
-                
-                if (supportList != null) {
-                    album.Add(new InputMediaPhoto(new InputMedia(supportList[SupportListType.Normal])));
-                    album.Add(new InputMediaPhoto(new InputMedia(supportList[SupportListType.Event])));
-                }
-                else {
-                    _logger.LogError("Errore nell'ottenere la support list di {master} da rayshift.io", master.ToString());
-                    await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Errore nell'ottenere la support list da Rayshift.io");
+                try {
+                    var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
+
+                    if (supportList != null) {
+                        album.Add(new InputMediaPhoto(new InputMedia(supportList)));
+                    }
+                    else {
+                        _logger.LogError("Errore nell'ottenere la support list di {master} da rayshift.io", master.ToString());
+                        await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Errore nell'ottenere la support list da Rayshift.io");
+                    }
+                } catch (NullReferenceException) {
+                    _logger.LogError("{master} non trovato su rayshift.io", master.ToString());
+                    await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Master non trovato su Rayshift.io");
                 }
             } else if (master.SupportList != null) {
                 album.Add(new InputMediaPhoto(new InputMedia(master.SupportList)));
@@ -145,7 +149,7 @@ namespace Server.TelegramController
             }
 
             if (album.Any()) {
-                await BotData.Bot.SendMediaGroupAsync(album, TelegramChat.Id);
+                await BotData.Bot.SendMediaGroupAsync(TelegramChat.Id, album);
             }
 
             var messageText = $"<b>Master:</b> {master.Name}\n" +
@@ -157,7 +161,8 @@ namespace Server.TelegramController
                 messageText += $"\n\n<a href=\"{BuildRayshiftUrl(master)}\">Rayshift.io</a>";
             }
 
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, messageText, ParseMode.Html, true);
+            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, messageText, ParseMode.Html, 
+                disableWebPagePreview: true);
             await BotData.Bot.DeleteMessageAsync(TelegramChat.ToChatId(), loadingMessage.MessageId);
         }
 
@@ -178,18 +183,15 @@ namespace Server.TelegramController
             };
         }
 
-        protected async Task<Dictionary<SupportListType,string>> GetSupportImageFromRayshift(Region region, string friendCode) {
-            Dictionary<SupportListType, string> images = null;
+        protected async Task<string> GetSupportImageFromRayshift(Region region, string friendCode) {
             using (var client = new RayshiftClient(Configuration["ApiKey"])) {
                 var master = (await client.GetSupportDeck(region, friendCode))?.Response;
-                if (master != null) {
-                    images = new Dictionary<SupportListType, string>();
-                    images[SupportListType.Normal] = master.SupportList(SupportListType.Normal);
-                    images[SupportListType.Event] = master.SupportList(SupportListType.Event);
-                    images[SupportListType.Both] = master.SupportList(SupportListType.Both);
-                }
 
-                return images;
+                if (master == null) {
+                    throw new NullReferenceException("No Master found.");
+                }
+                
+                return master.SupportList(region);
             }
         }
         
