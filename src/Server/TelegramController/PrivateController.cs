@@ -176,7 +176,7 @@ namespace Server.TelegramController {
                 } catch (Exception e) {
                     await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
                                                 "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
-                    _logger.LogWarning($"Error while requesting support lookup of {TelegramChat["friend_code"]}", e);
+                    _logger.LogError(e, "Error while requesting support lookup of {FriendCode}", TelegramChat["friend_code"]);
                 }
                 
                 
@@ -450,7 +450,7 @@ namespace Server.TelegramController {
                 }
             } catch (Exception e) {
                 // TODO Merge errors
-                _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
+                _logger.LogError(e, "Error while requesting support lookup of {FriendCode}", master.FriendCode);
                 await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
                                             "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
             }
@@ -577,7 +577,7 @@ namespace Server.TelegramController {
                     }
                 } catch (Exception e) {
                     // TODO Merge errors
-                    _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
+                    _logger.LogError(e, "Error while requesting support lookup of {FriendCode}", master.FriendCode);
                     await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.");
                 }
             }
@@ -665,7 +665,7 @@ namespace Server.TelegramController {
                         $"<i>La Support list del Master {master.Name} è stata aggiornata (via Rayshift)</i>");
                 }
             } catch (Exception e) {
-                _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
+                _logger.LogError(e, "Error while requesting support lookup of {FriendCode}", master.FriendCode);
                 await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
                     "Errore durante l'ottenimento della nuova support list.");
             }
