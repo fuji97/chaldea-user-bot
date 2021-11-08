@@ -66,19 +66,13 @@ namespace Rayshift {
 
             var response = await _client.GetAsync(fullUrl);
             var content = await response.Content.ReadAsStringAsync();
-            try {
-                var parsedResponse = DeserializeResponse(content);
-                if (parsedResponse.Status == 200) {
-                    return await WaitResponse(fullUrl, parsedResponse);
-                }
-
-                return parsedResponse;
-            }
-            catch {
-                // ignored
+            var parsedResponse = DeserializeResponse(content);
+            
+            if (parsedResponse.Status == 200) {
+                return await WaitResponse(fullUrl, parsedResponse);
             }
 
-            return null;
+            return parsedResponse;
         }
 
         public async Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null) {
