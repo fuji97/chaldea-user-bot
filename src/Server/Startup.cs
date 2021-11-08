@@ -87,7 +87,7 @@ namespace Server {
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
             // Initialize database
-            if (_configuration.GetValue<bool>("migrate")) {
+            if (_configuration.GetValue<bool>("MIGRATE")) {
                 using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
                 var context = serviceScope.ServiceProvider.GetService<MasterContext>();
                 _logger.LogInformation("Application started with --migrate true. Applying migrations...");
@@ -95,37 +95,48 @@ namespace Server {
             }
             
             // Seed data
-            if (_configuration.GetValue<bool>("seed")) {
+            if (_configuration.GetValue<bool>("SEED")) {
                 using var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
                 var context = serviceScope.ServiceProvider.GetService<MasterContext>();
-                _logger.LogInformation("Application started with --seed true. Applying migrations...");
+                _logger.LogInformation("Application started with --seed true. Seeding data...");
                 app.SeedData();
             }
 
             if (_configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
-                _logger.LogInformation("Using forwarded headers.");
+                _logger.LogInformation("Using forwarded headers");
                 app.UseForwardedHeaders(new ForwardedHeadersOptions
                 {
                     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
                 });
             }
             
-            _logger.LogInformation("Sending startup newsletters.");
+            _logger.LogInformation("Sending startup newsletters");
             app.UseStartupNewsletter();
 
-            if (_configuration.GetValue<bool>("WEBHOOK")) {
-                _logger.LogInformation("WEBHOOK variable set. Listening to Telegram requests.");
-                app.UseTelegramRouting();
-            } else if (env.IsDevelopment()) {
-                _logger.LogInformation("Development. Starting in Polling mode.");
-                app.UseDeveloperExceptionPage();
-                app.UseTelegramPolling();
+            var mode = _configuration["MODE"];
+            switch (mode) {
+                case "webhook":
+                    _logger.LogInformation("Webhook mode. Listening to Telegram requests");
+                    app.UseTelegramRouting();
+                    break;
+                case "polling":
+                    _logger.LogInformation("Polling mode. Starting in Polling mode");
+                    app.UseDeveloperExceptionPage();
+                    app.UseTelegramPolling();
+                    break;
+                default:
+                    if (env.IsDevelopment()) {
+                        _logger.LogInformation("Development. Starting in Polling mode");
+                        app.UseDeveloperExceptionPage();
+                        app.UseTelegramPolling();
+                    }
+                    else {
+                        _logger.LogInformation("Production. Listening to Telegram requests");
+                        app.UseTelegramRouting();
+                    }
+                    break;
             }
-            else {
-                _logger.LogInformation("Production. Listening to Telegram requests.");
-                app.UseTelegramRouting();
-            }
-            
+
             app.UseRouting();
             app.UseEndpoints(endpoints => {
                 endpoints.MapControllerRoute(

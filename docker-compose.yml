@@ -18,6 +18,13 @@ services:
       - ConnectionString=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
       - ASPNETCORE_URLS=http://*:5000
       - USE_FORWARDED_HEADERS=true
+      - MIGRATE=true
+      # - SEED=true
+      # - MODE=webhook|polling
+      # - BasePath=/telegram/
+      # - BotKey=00000:XXXXXXXXXXXXXXXXXXXXX
+      # - BaseUrl=https://localhost
+      # - Rayshift__ApiKey=XXXXXXXXXXXXXXXXXXXX
     depends_on:
       - db
     build:
