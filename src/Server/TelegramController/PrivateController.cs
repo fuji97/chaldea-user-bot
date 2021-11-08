@@ -578,8 +578,7 @@ namespace Server.TelegramController {
                 } catch (Exception e) {
                     // TODO Merge errors
                     _logger.LogWarning($"Error while requesting support lookup of {master.FriendCode}", e);
-                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.\n" +
-                                                "Inviami lo screen dei tuoi support, /rayshift se vuoi riprovare la connessione a Rayshift.io o /skip se vuoi saltare questa fase");
+                    await ReplyTextMessageAsync("Errore nell'impostare Rayshift.io come provider.");
                 }
             }
         }
@@ -755,14 +754,19 @@ namespace Server.TelegramController {
         private async Task<ApiResponse> SetupRayshift(Region region, Master master) {
             var response = await _rayshiftClient.RequestSupportLookupAsync(region, master.FriendCode);
 
-            if (response?.MessageType == MessageCode.Finished && response.Response != null) {
-                master.UseRayshift = true;
-                master.SupportList = null;
-                return response;
+            if (response?.Response == null) {
+                // TODO Use better exceptions
+                throw new NullReferenceException("Null response from RequestSupportLookupAsync()");
             }
-            else {
-                return null;
+
+            if (response.MessageType != MessageCode.Finished) {
+                // TODO Use better exceptions
+                throw new Exception($"Support lookup response message type is not finished ({response.MessageType})");
             }
+            
+            master.UseRayshift = true;
+            master.SupportList = null;
+            return response;
         }
 
         private static class InlineKeyboardCommands {
