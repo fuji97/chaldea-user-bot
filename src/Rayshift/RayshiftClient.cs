@@ -46,7 +46,7 @@ namespace Rayshift {
             var requestUri = $"{SupportDecks}{regionStr}/{friendCode}";
             var response = await _client.GetAsync(requestUri);
             var content = await response.Content.ReadAsStringAsync();
-            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", requestUri, content);
+            _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + requestUri, content);
             
             var parsedResponse = DeserializeResponse(content);
             return parsedResponse;
@@ -67,7 +67,7 @@ namespace Rayshift {
 
             var response = await _client.GetAsync(fullUrl);
             var content = await response.Content.ReadAsStringAsync();
-            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", fullUrl, content);
+            _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
             
             var parsedResponse = DeserializeResponse(content);
             
@@ -93,7 +93,7 @@ namespace Rayshift {
 
             var response = await _client.GetAsync(fullUrl);
             var content = await response.Content.ReadAsStringAsync();
-            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", fullUrl, content);
+            _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
             
             try {
                 var parsedResponse = DeserializeResponse(content);
@@ -129,7 +129,7 @@ namespace Rayshift {
 
                 var httpResponse = await _client.GetAsync(query);
                 var content = await httpResponse.Content.ReadAsStringAsync();
-                _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", query, content);
+                _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + query, content);
                 
                 try {
                     response = DeserializeResponse(content);
