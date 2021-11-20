@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Rayshift;
 using Rayshift.Utils;
 using Server.DbContext;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
@@ -18,7 +19,7 @@ namespace Server.TelegramController {
 
         private ChatSettings _cachedChatSettings = null;
 
-        public GroupController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger) : base(logger, cache, configuration) {
+        public GroupController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient) : base(logger, cache, configuration, rayshiftClient) {
             _logger = logger;
         }
 

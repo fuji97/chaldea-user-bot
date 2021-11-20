@@ -24,13 +24,16 @@ namespace Server.TelegramController
     
     public class Controller : TelegramController<MasterContext> {
         private readonly ILogger _logger;
+        
         protected readonly IMemoryCache Cache;
         protected readonly IConfiguration Configuration;
+        protected readonly IRayshiftClient RayshiftClient;
 
-        public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration) {
+        public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration, IRayshiftClient rayshiftClient) {
             _logger = logger;
             Cache = cache;
             Configuration = configuration;
+            RayshiftClient = rayshiftClient;
         }
 
         public Controller() {
@@ -168,7 +171,7 @@ namespace Server.TelegramController
 
         protected Uri BuildRayshiftUrl(Master master) {
             var uriBuilder =
-                new UriBuilder(RayshiftClient.BaseAddress) {
+                new UriBuilder(Rayshift.RayshiftClient.BaseAddress) {
                     Path = $"{ServerToString(master.Server)}/{master.FriendCode}"
                 };
 
@@ -184,15 +187,14 @@ namespace Server.TelegramController
         }
 
         protected async Task<string> GetSupportImageFromRayshift(Region region, string friendCode) {
-            using (var client = new RayshiftClient(Configuration["ApiKey"])) {
-                var master = (await client.GetSupportDeck(region, friendCode))?.Response;
+            var master = (await RayshiftClient.GetSupportDeck(region, friendCode))?.Response;
 
-                if (master == null) {
-                    throw new NullReferenceException("No Master found.");
-                }
-                
-                return master.SupportList(region);
+            if (master == null) {
+                throw new NullReferenceException("No Master found.");
             }
+            
+            return master.SupportList(region);
+            
         }
         
         protected async Task<Stream> GetImageStream(Uri url) {

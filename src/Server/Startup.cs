@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,8 +11,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Rayshift;
 using Server.DbContext;
+using Server.Exceptions;
 using Server.Infrastructure;
 using Server.TelegramController;
+using Telegram.Bot;
 using Telegram.Bot.Advanced.Controller;
 using Telegram.Bot.Advanced.Core.Dispatcher;
 using Telegram.Bot.Advanced.Core.Holder;
@@ -20,8 +23,10 @@ using Telegram.Bot.Advanced.Extensions;
 using Telegram.Bot.Advanced.Models;
 using Telegram.Bot.Advanced.Services;
 using Telegram.Bot.Exceptions;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Controller = Server.TelegramController.Controller;
+using InvalidParameterException = Server.Exceptions.InvalidParameterException;
 
 namespace Server {
     public class Startup {
@@ -37,18 +42,31 @@ namespace Server {
         }
         
         public void ConfigureServices(IServiceCollection services) {
-            _logger.LogInformation($"ChaldeaBot v{_version}");
-            _logger.LogInformation($"Listening on bot [{_configuration["BotKey"]}] on path {_configuration["BasePath"]}");
+            var botKey = _configuration["BotKey"];
+            var basePath = _configuration["BasePath"];
+
+            if (String.IsNullOrEmpty(botKey)) {
+                throw new InvalidParameterException("BotKey parameter is missing.");
+            }
+            
+            if (String.IsNullOrEmpty(basePath)) {
+                throw new InvalidParameterException("BasePath parameter is missing.");
+            }
+            
+            _logger.LogInformation("ChaldeaBot v{Version}", _version);
+
+            var botInfo = GetBotInfo(botKey).Result;
+            _logger.LogInformation("Listening on bot [@{Username}] on path {BasePath}", botInfo.Username, basePath);
             
             services.AddDbContext<MasterContext>(
                 options => options.UseNpgsql(_configuration["ConnectionString"]));
             services.AddTelegramHolder(new TelegramBotData(options => {
-                    options.CreateTelegramBotClient(_configuration["BotKey"]);
+                    options.CreateTelegramBotClient(botKey);
                     options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
                         .AddControllers(typeof(GroupController), typeof(InlineController), typeof(PrivateController))
                         .RegisterNewsletterController<MasterContext>());
                     
-                    options.BasePath = _configuration["BasePath"];
+                    options.BasePath = basePath;
                     
                     options.DefaultUserRole.Add(
                         new UserRole("fuji97", ChatRole.Administrator));
@@ -75,10 +93,10 @@ namespace Server {
             });
 
             services.AddNewsletter<MasterContext>();
-
             services.AddSingleton<IRayshiftClient, RayshiftClient>(serv => {
                 var configuration = serv.GetRequiredService<IConfiguration>();
-                return new RayshiftClient(configuration["Rayshift:ApiKey"]);
+                var logger = serv.GetService<ILogger<RayshiftClient>>();
+                return new RayshiftClient(configuration["Rayshift:ApiKey"], logger: logger);
             });
             services.AddMemoryCache();
             services.AddControllersWithViews();
@@ -114,26 +132,26 @@ namespace Server {
             app.UseStartupNewsletter();
 
             var mode = _configuration["MODE"];
+            if (mode != "webhook" && mode != "polling") {
+                if (env.IsDevelopment()) {
+                    _logger.LogInformation("Development environment. Using polling mode");
+                    mode = "polling";
+                }
+                else {
+                    _logger.LogInformation("Production environment. Using webhook mode");
+                    mode = "webhook";
+                }
+            }
+            
             switch (mode) {
                 case "webhook":
-                    _logger.LogInformation("Webhook mode. Listening to Telegram requests");
+                    _logger.LogInformation("Listening to Telegram requests");
                     app.UseTelegramRouting();
                     break;
                 case "polling":
-                    _logger.LogInformation("Polling mode. Starting in Polling mode");
+                    _logger.LogInformation("Starting in Polling mode");
                     app.UseDeveloperExceptionPage();
                     app.UseTelegramPolling();
-                    break;
-                default:
-                    if (env.IsDevelopment()) {
-                        _logger.LogInformation("Development. Starting in Polling mode");
-                        app.UseDeveloperExceptionPage();
-                        app.UseTelegramPolling();
-                    }
-                    else {
-                        _logger.LogInformation("Production. Listening to Telegram requests");
-                        app.UseTelegramRouting();
-                    }
                     break;
             }
 
@@ -143,6 +161,12 @@ namespace Server {
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
+        
+        private async Task<User> GetBotInfo(string token) {
+            var botClient = new TelegramBotClient(token);
+
+            return await botClient.GetMeAsync();
         }
     }
 }

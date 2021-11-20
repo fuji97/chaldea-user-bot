@@ -7,6 +7,7 @@ using DataScraper.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Rayshift;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
@@ -15,7 +16,7 @@ namespace Server.TelegramController {
     public class InlineController : Controller {
         private ILogger<InlineController> _logger;
 
-        public InlineController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger) : base(logger, cache, configuration) {
+        public InlineController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient) : base(logger, cache, configuration, rayshiftClient) {
             _logger = logger;
         }
 

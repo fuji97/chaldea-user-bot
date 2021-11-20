@@ -1,10 +1,11 @@
-﻿﻿using System;
+﻿using System;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using Microsoft.Extensions.Logging;
 using Rayshift.Models;
 
 namespace Rayshift {
@@ -21,12 +22,14 @@ namespace Rayshift {
 
         private readonly HttpClient _client;
         private readonly string? _apiKey;
+        private readonly ILogger<RayshiftClient>? _logger;
 
         public int MaxLookupRequests { get; set; } = 15;
         public int RequestsInterval { get; set; } = 2000;
 
-        public RayshiftClient(string? apiKey = null, string? baseAddress = null) {
+        public RayshiftClient(string? apiKey = null, string? baseAddress = null, ILogger<RayshiftClient>? logger = null) {
             _apiKey = apiKey;
+            _logger = logger;
 
             _client = new HttpClient {
                 BaseAddress = baseAddress != null ? new Uri(baseAddress) : new Uri(ApiBaseAddress),
@@ -40,15 +43,13 @@ namespace Rayshift {
             
             var regionStr = Utils.Utils.StringRegion(region);
 
-            var response = await _client.GetAsync($"{SupportDecks}{regionStr}/{friendCode}");
+            var requestUri = $"{SupportDecks}{regionStr}/{friendCode}";
+            var response = await _client.GetAsync(requestUri);
             var content = await response.Content.ReadAsStringAsync();
-            try {
-                var parsedResponse = DeserializeResponse(content);
-                return parsedResponse;
-            }
-            catch (Exception) {
-                return null;
-            }
+            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", requestUri, content);
+            
+            var parsedResponse = DeserializeResponse(content);
+            return parsedResponse;
         }
         
         public async Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode) {
@@ -66,6 +67,8 @@ namespace Rayshift {
 
             var response = await _client.GetAsync(fullUrl);
             var content = await response.Content.ReadAsStringAsync();
+            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", fullUrl, content);
+            
             var parsedResponse = DeserializeResponse(content);
             
             if (parsedResponse.Status == 200) {
@@ -90,6 +93,8 @@ namespace Rayshift {
 
             var response = await _client.GetAsync(fullUrl);
             var content = await response.Content.ReadAsStringAsync();
+            _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", fullUrl, content);
+            
             try {
                 var parsedResponse = DeserializeResponse(content);
                 if (parsedResponse.Status == 200) {
@@ -101,7 +106,8 @@ namespace Rayshift {
                     return true;
                 }
             }
-            catch {
+            catch (Exception e) {
+                _logger?.LogError(e, "Exception thrown when deserializing response");
                 return false;
             }
 
@@ -123,10 +129,13 @@ namespace Rayshift {
 
                 var httpResponse = await _client.GetAsync(query);
                 var content = await httpResponse.Content.ReadAsStringAsync();
+                _logger?.LogDebug("Response from Rayshift [{RequestUri}]: {Content}", query, content);
+                
                 try {
                     response = DeserializeResponse(content);
                 }
-                catch {
+                catch (Exception e) {
+                    _logger?.LogError(e, "Exception thrown when deserializing response");
                     response = null;
                     break;
                 }
