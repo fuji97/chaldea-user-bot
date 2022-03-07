@@ -9,8 +9,8 @@ namespace Server.DbContext {
         
         public TelegramChat TelegramChat { get; set; }
         
-        public bool ServantListNotifications { get; set; } = true;
+        public bool ServantListNotifications { get; set; } = false;
         
-        public bool SupportListNotifications { get; set; } = true;
+        public bool SupportListNotifications { get; set; } = false;
     }
 }

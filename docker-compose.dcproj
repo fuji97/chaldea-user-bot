@@ -1,15 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
+
 <Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
   <PropertyGroup Label="Globals">
     <ProjectVersion>3.1</ProjectVersion>
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>11fb02e7-0645-41eb-9800-fc822eb95d36</ProjectGuid>
+    <UserSecretsId>2558ea16-77f1-4512-b636-58dd16535a8d</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="docker-compose.credentials.yml" />
     <Content Include="docker-compose.production.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </Content>
