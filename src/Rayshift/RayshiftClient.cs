@@ -43,7 +43,7 @@ namespace Rayshift {
             
             var regionStr = Utils.Utils.StringRegion(region);
 
-            var requestUri = $"{SupportDecks}{regionStr}/{friendCode}";
+            var requestUri = $"{SupportDecks}{regionStr}/{friendCode}?random={Guid.NewGuid()}"; // TODO Use something better like Flurl to concatenate parameters
             var response = await _client.GetAsync(requestUri);
             var content = await response.Content.ReadAsStringAsync();
             _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + requestUri, content);
