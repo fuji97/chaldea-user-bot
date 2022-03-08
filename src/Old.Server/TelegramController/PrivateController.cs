@@ -119,7 +119,7 @@ namespace Server.TelegramController {
                     TelegramChat["server"] = ((int) MasterServer.Jp).ToString();
                     TelegramChat.State = ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Old.Server giapponese impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
  
@@ -128,12 +128,12 @@ namespace Server.TelegramController {
                     TelegramChat["server"] = ((int)MasterServer.Na).ToString();
                     TelegramChat.State = ConversationState.SupportList;
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Old.Server americano impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                             replyMarkup: new ReplyKeyboardRemove());
                     }
                     break;
                 default:
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server non valido, specificare 'JP' o 'US'");
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Old.Server non valido, specificare 'JP' o 'US'");
                     break;
             }
         }

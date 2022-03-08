@@ -9,11 +9,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{10946322-DE7
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataScraper", "src\DataScraper\DataScraper.csproj", "{3519C789-3651-457E-8259-7ED2B3DFC2AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "src\Server\Server.csproj", "{45E4D3D1-A1FC-4D6D-A386-6FEE8D1D3A52}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Old.Server", "src\Old.Server\Old.Server.csproj", "{45E4D3D1-A1FC-4D6D-A386-6FEE8D1D3A52}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rayshift", "src\Rayshift\Rayshift.csproj", "{3C8F0C17-9019-4252-A6C3-FF236BD5BBAE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rayshift.Test", "src\Rayshift.Test\Rayshift.Test.csproj", "{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChaldeaBot", "src\ChaldeaBot\ChaldeaBot.csproj", "{98658C5C-6433-48A8-A9C6-C41C748B682F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,10 @@ Global
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98658C5C-6433-48A8-A9C6-C41C748B682F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98658C5C-6433-48A8-A9C6-C41C748B682F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98658C5C-6433-48A8-A9C6-C41C748B682F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98658C5C-6433-48A8-A9C6-C41C748B682F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,5 +59,6 @@ Global
 		{45E4D3D1-A1FC-4D6D-A386-6FEE8D1D3A52} = {10946322-DE75-44D5-A912-C109DD6B3330}
 		{3C8F0C17-9019-4252-A6C3-FF236BD5BBAE} = {10946322-DE75-44D5-A912-C109DD6B3330}
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9} = {10946322-DE75-44D5-A912-C109DD6B3330}
+		{98658C5C-6433-48A8-A9C6-C41C748B682F} = {10946322-DE75-44D5-A912-C109DD6B3330}
 	EndGlobalSection
 EndGlobal

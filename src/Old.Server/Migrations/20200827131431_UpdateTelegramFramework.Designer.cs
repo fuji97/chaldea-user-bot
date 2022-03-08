@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Server.DbContext;
@@ -9,33 +10,18 @@ using Server.DbContext;
 namespace Server.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    partial class MasterContextModelSnapshot : ModelSnapshot
+    [Migration("20200827131431_UpdateTelegramFramework")]
+    partial class UpdateTelegramFramework
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.7")
+                .HasAnnotation("ProductVersion", "3.1.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            modelBuilder.Entity("Server.DbContext.ChatSettings", b =>
-                {
-                    b.Property<long>("Id")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("ServantListNotifications")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("SupportListNotifications")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TelegramChats");
-                });
-
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -51,7 +37,7 @@ namespace Server.Migrations
                     b.Property<string>("ServantList")
                         .HasColumnType("text");
 
-                    b.Property<int>("Server")
+                    b.Property<int>("Old.Server")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
@@ -59,9 +45,6 @@ namespace Server.Migrations
 
                     b.Property<string>("SupportList")
                         .HasColumnType("text");
-
-                    b.Property<bool>("UseRayshift")
-                        .HasColumnType("boolean");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -73,7 +56,7 @@ namespace Server.Migrations
                     b.ToTable("Masters");
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
                     b.Property<long>("ChatId")
                         .HasColumnType("bigint");
@@ -172,19 +155,10 @@ namespace Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TelegramChats");
+                    b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Server.DbContext.ChatSettings", b =>
-                {
-                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "TelegramChat")
-                        .WithMany()
-                        .HasForeignKey("Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
                 {
                     b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "User")
                         .WithMany()
@@ -193,7 +167,7 @@ namespace Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
                     b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "Chat")
                         .WithMany()
@@ -201,7 +175,7 @@ namespace Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Server.DbContext.Master", "Master")
+                    b.HasOne("Old.Server.DbContext.Master", "Master")
                         .WithMany("RegisteredChats")
                         .HasForeignKey("MasterId")
                         .OnDelete(DeleteBehavior.Cascade)

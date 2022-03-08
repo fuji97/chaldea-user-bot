@@ -21,7 +21,7 @@ namespace Server.Infrastructure {
                 var strServer = strConn[3];
                 var strDatabase = strConn[5];
                 var strPort = strConn[4];
-                return "host=" + strServer + ";port=" + strPort + ";database=" + strDatabase + ";uid=" + strUser + ";pwd=" + strPass + ";sslmode=Require;Trust Server Certificate=true;Timeout=1000";
+                return "host=" + strServer + ";port=" + strPort + ";database=" + strDatabase + ";uid=" + strUser + ";pwd=" + strPass + ";sslmode=Require;Trust Old.Server Certificate=true;Timeout=1000";
             }
             else {
                 return connectionString;

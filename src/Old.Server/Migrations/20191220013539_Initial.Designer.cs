@@ -10,8 +10,8 @@ using Server.DbContext;
 namespace Server.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    [Migration("20191221013118_UpdateBaseTelegramBotAdvancedStructure")]
-    partial class UpdateBaseTelegramBotAdvancedStructure
+    [Migration("20191220013539_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -21,7 +21,7 @@ namespace Server.Migrations
                 .HasAnnotation("ProductVersion", "3.1.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -37,7 +37,7 @@ namespace Server.Migrations
                     b.Property<string>("ServantList")
                         .HasColumnType("text");
 
-                    b.Property<int>("Server")
+                    b.Property<int>("Old.Server")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
@@ -56,7 +56,7 @@ namespace Server.Migrations
                     b.ToTable("Masters");
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
                     b.Property<long>("ChatId")
                         .HasColumnType("bigint");
@@ -91,6 +91,9 @@ namespace Server.Migrations
                 {
                     b.Property<long>("Id")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("AllMembersAreAdministrators")
+                        .HasColumnType("boolean");
 
                     b.Property<bool?>("CanSetStickerSet")
                         .HasColumnType("boolean");
@@ -130,7 +133,7 @@ namespace Server.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
                 {
                     b.HasOne("Telegram.Bot.Advanced.Models.TelegramChat", "User")
                         .WithMany()
@@ -139,7 +142,7 @@ namespace Server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
                     b.HasOne("Telegram.Bot.Advanced.Models.TelegramChat", "Chat")
                         .WithMany()
@@ -147,7 +150,7 @@ namespace Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Server.DbContext.Master", "Master")
+                    b.HasOne("Old.Server.DbContext.Master", "Master")
                         .WithMany("RegisteredChats")
                         .HasForeignKey("MasterId")
                         .OnDelete(DeleteBehavior.Cascade)

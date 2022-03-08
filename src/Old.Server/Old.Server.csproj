@@ -8,7 +8,8 @@
         <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
         <AssemblyVersion>1.1</AssemblyVersion>
         <FileVersion>1.1</FileVersion>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
+        <RootNamespace>Server</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

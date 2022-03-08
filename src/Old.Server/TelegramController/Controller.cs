@@ -157,7 +157,7 @@ namespace Server.TelegramController
 
             var messageText = $"<b>Master:</b> {master.Name}\n" +
                               $"<b>Friend Code:</b> {master.FriendCode}\n" +
-                              $"<b>Server:</b> {master.Server.ToString()}\n" +
+                              $"<b>Old.Server:</b> {master.Server.ToString()}\n" +
                               $"<b>Registrato da:</b> <a href=\"tg://user?id={master.UserId}\">@{master.User.Username}</a>";
 
             if (master.UseRayshift) {

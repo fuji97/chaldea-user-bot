@@ -10,18 +10,34 @@ using Server.DbContext;
 namespace Server.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    [Migration("20191220013539_Initial")]
-    partial class Initial
+    [Migration("20200906203623_AddChatSettings")]
+    partial class AddChatSettings
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.0")
+                .HasAnnotation("ProductVersion", "3.1.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.ChatSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("ServantListNotifications")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportListNotifications")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TelegramChats");
+                });
+
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -37,7 +53,7 @@ namespace Server.Migrations
                     b.Property<string>("ServantList")
                         .HasColumnType("text");
 
-                    b.Property<int>("Server")
+                    b.Property<int>("Old.Server")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
@@ -45,6 +61,9 @@ namespace Server.Migrations
 
                     b.Property<string>("SupportList")
                         .HasColumnType("text");
+
+                    b.Property<bool>("UseRayshift")
+                        .HasColumnType("boolean");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -56,7 +75,7 @@ namespace Server.Migrations
                     b.ToTable("Masters");
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
                     b.Property<long>("ChatId")
                         .HasColumnType("bigint");
@@ -71,7 +90,7 @@ namespace Server.Migrations
                     b.ToTable("RegisteredChats");
                 });
 
-            modelBuilder.Entity("Telegram.Bot.Advanced.Models.Data", b =>
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.Data", b =>
                 {
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -87,13 +106,38 @@ namespace Server.Migrations
                     b.ToTable("Data");
                 });
 
-            modelBuilder.Entity("Telegram.Bot.Advanced.Models.TelegramChat", b =>
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.Newsletter", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("Newsletters");
+                });
+
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.NewsletterChat", b =>
+                {
+                    b.Property<string>("NewsletterKey")
+                        .HasColumnType("text");
+
+                    b.Property<long>("ChatId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("NewsletterKey", "ChatId");
+
+                    b.HasIndex("ChatId");
+
+                    b.ToTable("NewsletterChats");
+                });
+
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.TelegramChat", b =>
                 {
                     b.Property<long>("Id")
                         .HasColumnType("bigint");
-
-                    b.Property<bool>("AllMembersAreAdministrators")
-                        .HasColumnType("boolean");
 
                     b.Property<bool?>("CanSetStickerSet")
                         .HasColumnType("boolean");
@@ -113,8 +157,8 @@ namespace Server.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
-                    b.Property<int>("State")
-                        .HasColumnType("integer");
+                    b.Property<string>("State")
+                        .HasColumnType("text");
 
                     b.Property<string>("StickerSetName")
                         .HasColumnType("text");
@@ -130,38 +174,62 @@ namespace Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("TelegramChats");
                 });
 
-            modelBuilder.Entity("Server.DbContext.Master", b =>
+            modelBuilder.Entity("Old.Server.DbContext.ChatSettings", b =>
                 {
-                    b.HasOne("Telegram.Bot.Advanced.Models.TelegramChat", "User")
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "TelegramChat")
+                        .WithMany()
+                        .HasForeignKey("Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Old.Server.DbContext.Master", b =>
+                {
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Server.DbContext.RegisteredChat", b =>
+            modelBuilder.Entity("Old.Server.DbContext.RegisteredChat", b =>
                 {
-                    b.HasOne("Telegram.Bot.Advanced.Models.TelegramChat", "Chat")
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "Chat")
                         .WithMany()
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Server.DbContext.Master", "Master")
+                    b.HasOne("Old.Server.DbContext.Master", "Master")
                         .WithMany("RegisteredChats")
                         .HasForeignKey("MasterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Telegram.Bot.Advanced.Models.Data", b =>
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.Data", b =>
                 {
-                    b.HasOne("Telegram.Bot.Advanced.Models.TelegramChat", "Chat")
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "Chat")
                         .WithMany("Data")
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Telegram.Bot.Advanced.DbContexts.NewsletterChat", b =>
+                {
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.TelegramChat", "Chat")
+                        .WithMany("NewsletterChats")
+                        .HasForeignKey("ChatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Telegram.Bot.Advanced.DbContexts.Newsletter", "Newsletter")
+                        .WithMany("NewsletterChats")
+                        .HasForeignKey("NewsletterKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
