@@ -14,8 +14,16 @@ namespace ChaldeaBot.DbContext
         [ForeignKey("ChatId")]
         public TelegramChat Chat { get; set; }
 
+        /// <summary>
+        /// Empty constructor used by EF Core.
+        /// </summary>
         public RegisteredChat() { }
 
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        /// <param name="masterId">Master ID (Foreign Key)</param>
+        /// <param name="chatId">Chat ID (Foreign Key)</param>
         public RegisteredChat(int masterId, long chatId) {
             MasterId = masterId;
             ChatId = chatId;

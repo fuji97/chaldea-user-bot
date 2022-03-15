@@ -7,8 +7,8 @@ namespace ChaldeaBot.DbContext {
         [Key, ForeignKey("TelegramChat")]
         public long Id { get; set; }
         
-        public TelegramChat TelegramChat { get; set; }
-        
+        public TelegramChat TelegramChat { get; set; } = null!;
+
         public bool ServantListNotifications { get; set; } = false;
         
         public bool SupportListNotifications { get; set; } = false;

@@ -13,8 +13,8 @@ namespace ChaldeaBot.DbContext
         public long UserId { get; set; }
         public string Name { get; set; }
         public string FriendCode { get; set; }
-        public string SupportList { get; set; }
-        public string ServantList { get; set; }
+        public string? SupportList { get; set; }
+        public string? ServantList { get; set; }
         public MasterServer Server { get; set; }
         public MasterStatus Status { get; set; }
         public ICollection<RegisteredChat> RegisteredChats { get; set; }
@@ -23,9 +23,15 @@ namespace ChaldeaBot.DbContext
         
         public bool UseRayshift { get; set; }
 
+        /***
+         * Empty constructor used by EF Core.
+         */
         public Master() { }
 
-        public Master(TelegramChat user, string name, string friendCode, MasterServer server, string support = null, string servant = null, bool useRayshift = false,
+        /***
+         * Default constructor to build the object.
+         */
+        public Master(TelegramChat user, string name, string friendCode, MasterServer server, string? support = null, string? servant = null, bool useRayshift = false,
             MasterStatus status = MasterStatus.Enabled) {
             User = user;
             UserId = user.Id;
@@ -37,21 +43,6 @@ namespace ChaldeaBot.DbContext
             Status = status;
             UseRayshift = useRayshift;
         }
-
-        /*
-        public void UpdateData(string key, string value)
-        {
-            var data = Data.FirstOrDefault(d => d.Key == key);
-            if (data != null)
-            {
-                data.Value = value;
-            }
-            else
-            {
-                Data.Add(new Data(this, key, value));
-            }
-        }
-        */
     }
 
     public enum MasterStatus {
