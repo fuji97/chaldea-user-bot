@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,7 +20,7 @@ namespace Server.TelegramController {
 
         private ChatSettings _cachedChatSettings = null;
 
-        public GroupController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient) : base(logger, cache, configuration, rayshiftClient) {
+        public GroupController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient, HttpClient httpClient) : base(logger, cache, configuration, rayshiftClient, httpClient) {
             _logger = logger;
         }
 

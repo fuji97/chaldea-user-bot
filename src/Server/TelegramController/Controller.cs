@@ -29,15 +29,18 @@ namespace Server.TelegramController
         protected readonly IMemoryCache Cache;
         protected readonly IConfiguration Configuration;
         protected readonly IRayshiftClient RayshiftClient;
+        protected readonly HttpClient HttpClient;
 
-        public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration, IRayshiftClient rayshiftClient) {
+        public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration, IRayshiftClient rayshiftClient, HttpClient httpClient) {
             _logger = logger;
             Cache = cache;
             Configuration = configuration;
             RayshiftClient = rayshiftClient;
+            HttpClient = httpClient;
         }
 
-        public Controller() {
+        public Controller(HttpClient httpClient) {
+            HttpClient = httpClient;
         }
 
         [CommandFilter("help")]
@@ -212,9 +215,17 @@ namespace Server.TelegramController
             if (master == null) {
                 throw new NullReferenceException("No Master found.");
             }
+
+            return await GetSupportImageFromApiResponse(master, region, cancellationToken);
+        }
+
+        protected async Task<string> GetSupportImageFromApiResponse(ApiMaster apiResponse, Region region, CancellationToken cancellationToken = default) {
+            var supportList = apiResponse.SupportList(region);
             
-            return master.SupportList(region);
+            // Ensure image has been cached
+            await HttpClient.GetAsync(supportList, cancellationToken);
             
+            return supportList;
         }
         
         protected async Task<Stream> GetImageStream(Uri url) {

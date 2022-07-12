@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using DataScraper;
 using DataScraper.Models;
@@ -16,7 +17,7 @@ namespace Server.TelegramController {
     public class InlineController : Controller {
         private ILogger<InlineController> _logger;
 
-        public InlineController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient) : base(logger, cache, configuration, rayshiftClient) {
+        public InlineController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient, HttpClient httpClient) : base(logger, cache, configuration, rayshiftClient, httpClient) {
             _logger = logger;
         }
 

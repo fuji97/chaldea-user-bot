@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ namespace Server.TelegramController {
     public class PrivateController : Controller {
         private readonly ILogger<InlineController> _logger;
 
-        public PrivateController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient) : base(logger, cache, configuration, rayshiftClient) {
+        public PrivateController(IMemoryCache cache, IConfiguration configuration, ILogger<InlineController> logger, IRayshiftClient rayshiftClient, HttpClient httpClient) : base(logger, cache, configuration, rayshiftClient, httpClient) {
             _logger = logger;
         }
         
@@ -151,10 +152,17 @@ namespace Server.TelegramController {
                     var message = await ReplyTextMessageAsync(
                             "Connessione avvenuta con successo!\nStiamo caricando la support list da Rayshift, attendere prego...");
                     try {
-                        await ReplyPhotoAsync(
-                            new InputOnlineFile(new Uri(result.Response.SupportList(region))));
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, message.MessageId,
-                            "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                        var supportListUrl = await GetSupportImageFromApiResponse(result.Response, region);
+                        try {
+                            await ReplyPhotoAsync(new InputOnlineFile(new Uri(supportListUrl)));
+                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, message.MessageId,
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                        } catch (ApiRequestException e) {
+                            _logger.LogError(e, "Exception thrown while sending support list");
+                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, message.MessageId,
+                                "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
+                        }
+                        
                         
                         TelegramChat["support_photo"] = null;
                         TelegramChat["use_rayshift"] = "true";
@@ -162,7 +170,7 @@ namespace Server.TelegramController {
 
                         await SaveChanges();
                     } catch (ApiRequestException e) {
-                        Console.WriteLine(result.Response.SupportList(region));
+                        _logger.LogError(e, "Exception thrown while sending data to Telegram");
                         throw;
                     }
                     await ReplyTextMessageAsync(
@@ -430,10 +438,17 @@ namespace Server.TelegramController {
                 if (response != null) {
                     TelegramChat.State = ConversationState.Idle;
                     if (await SaveChanges()) {
-                        await ReplyPhotoAsync(
-                            new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
-                            "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                        try {
+                            var supportList = await GetSupportImageFromApiResponse(response.Response!, region);
+                            await ReplyPhotoAsync(
+                                new InputOnlineFile(new Uri(supportList)));
+                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                        } catch (ApiRequestException e) {
+                            _logger.LogError(e, "Exception thrown while sending support list");
+                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                                "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
+                        }
                         await ReplyTextMessageAsync(
                             "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
                     
@@ -559,10 +574,17 @@ namespace Server.TelegramController {
 
                     if (response != null) {
                         if (await SaveChanges()) {
-                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
-                                "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
-                            await ReplyPhotoAsync(
-                                new InputOnlineFile(new Uri(response.Response!.SupportList(region))));
+                            try {
+                                var supportList = await GetSupportImageFromApiResponse(response.Response!, region);
+                                await ReplyPhotoAsync(
+                                    new InputOnlineFile(new Uri(supportList)));
+                                await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                                    "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
+                            } catch (ApiRequestException e) {
+                                _logger.LogError(e, "Exception thrown while sending support list");
+                                await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                                    "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
+                            }
                             await ReplyTextMessageAsync(
                                 "È possibile disabilitare successivamente Rayshift.io tramite il comando /support_list <MASTER> o aggiornare la lista tramite il comando /update <MASTER>\n");
                             await SendSupportListUpdateNotifications(master,
