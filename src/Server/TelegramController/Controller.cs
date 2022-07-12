@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using DataScraper;
 using DataScraper.Models;
@@ -125,23 +126,37 @@ namespace Server.TelegramController
         }
         
         protected async Task SendMaster(Master master) {
+
             var album = new List<IAlbumInputMedia>();
             var loadingMessage = await ReplyTextMessageAsync("Caricamento delle informazioni da Rayshift, attendere...");
             
             if (master.UseRayshift) {
                 try {
-                    var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server), master.FriendCode);
+                    // TODO Temporary fix for timeout
+                    var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    var supportList = await GetSupportImageFromRayshift(ServerToRegion(master.Server),
+                        master.FriendCode, timeout.Token);
 
                     if (supportList != null) {
                         album.Add(new InputMediaPhoto(new InputMedia(supportList)));
+                    } else {
+                        _logger.LogError("Errore nell'ottenere la support list di {Master} da rayshift.io",
+                            master.ToString());
+                        await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                            "Errore nell'ottenere la support list da Rayshift.io");
                     }
-                    else {
-                        _logger.LogError("Errore nell'ottenere la support list di {master} da rayshift.io", master.ToString());
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Errore nell'ottenere la support list da Rayshift.io");
-                    }
+                } catch (TaskCanceledException e) {
+                    _logger.LogError(e, "Timeout while retrieving support list");
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                        "Timeout mentre ottengo la support list da Rayshift.io");
                 } catch (NullReferenceException) {
-                    _logger.LogError("{master} non trovato su rayshift.io", master.ToString());
-                    await BotData.Bot.EditMessageTextAsync(TelegramChat.ToChatId(), loadingMessage.MessageId, "Master non trovato su Rayshift.io");
+                    _logger.LogError("{Master} non trovato su rayshift.io", master.ToString());
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                        "Master non trovato su Rayshift.io");
+                } catch (Exception e) {
+                    _logger.LogError(e, "Exception thrown while retrieving support list");
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                        "Errore nell'ottenere la support list da Rayshift.io");
                 }
             } else if (master.SupportList != null) {
                 album.Add(new InputMediaPhoto(new InputMedia(master.SupportList)));
@@ -152,7 +167,12 @@ namespace Server.TelegramController
             }
 
             if (album.Any()) {
-                await BotData.Bot.SendMediaGroupAsync(TelegramChat.Id, album);
+                try {
+                    await BotData.Bot.SendMediaGroupAsync(TelegramChat.Id, album);
+                } catch (Exception e) {
+                    _logger.LogError(e, "Exception thrown while sending the support list album");
+                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Errore di invio delle immagini della support list");
+                }
             }
 
             var messageText = $"<b>Master:</b> {master.Name}\n" +
@@ -186,8 +206,8 @@ namespace Server.TelegramController
             };
         }
 
-        protected async Task<string> GetSupportImageFromRayshift(Region region, string friendCode) {
-            var master = (await RayshiftClient.GetSupportDeck(region, friendCode))?.Response;
+        protected async Task<string> GetSupportImageFromRayshift(Region region, string friendCode, CancellationToken cancellationToken = default) {
+            var master = (await RayshiftClient.GetSupportDeck(region, friendCode, cancellationToken))?.Response;
 
             if (master == null) {
                 throw new NullReferenceException("No Master found.");

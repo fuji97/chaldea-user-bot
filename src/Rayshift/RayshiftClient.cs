@@ -36,7 +36,7 @@ namespace Rayshift {
             };
         }
 
-        public async Task<ApiResponse?> GetSupportDeck(Region region, string friendCode) {
+        public async Task<ApiResponse?> GetSupportDeck(Region region, string friendCode, CancellationToken cancellationToken = default) {
             if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
                 throw new ArgumentException("Not a valid friend code", nameof(friendCode));
             }
@@ -44,15 +44,15 @@ namespace Rayshift {
             var regionStr = Utils.Utils.StringRegion(region);
 
             var requestUri = $"{SupportDecks}{regionStr}/{friendCode}?random={Guid.NewGuid()}"; // TODO Use something better like Flurl to concatenate parameters
-            var response = await _client.GetAsync(requestUri);
-            var content = await response.Content.ReadAsStringAsync();
+            var response = await _client.GetAsync(requestUri, cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + requestUri, content);
             
             var parsedResponse = DeserializeResponse(content);
             return parsedResponse;
         }
         
-        public async Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode) {
+        public async Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode, CancellationToken cancellationToken = default) {
             if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
                 throw new ArgumentException("Not a valid friend code", nameof(friendCode));
             }
@@ -65,8 +65,8 @@ namespace Rayshift {
             query["friendId"] = friendCode;
             string fullUrl = SupportLookup + '?' + query.ToString();
 
-            var response = await _client.GetAsync(fullUrl);
-            var content = await response.Content.ReadAsStringAsync();
+            var response = await _client.GetAsync(fullUrl, cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
             
             var parsedResponse = DeserializeResponse(content);
@@ -78,7 +78,7 @@ namespace Rayshift {
             return parsedResponse;
         }
 
-        public async Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null) {
+        public async Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null, CancellationToken cancellationToken = default) {
             if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
                 throw new ArgumentException("Not a valid friend code", nameof(friendCode));
             }
@@ -91,8 +91,8 @@ namespace Rayshift {
             query["friendId"] = friendCode;
             string fullUrl = SupportLookup + '?' + query.ToString();
 
-            var response = await _client.GetAsync(fullUrl);
-            var content = await response.Content.ReadAsStringAsync();
+            var response = await _client.GetAsync(fullUrl, cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
             
             try {
