@@ -23,13 +23,12 @@ namespace Server.TelegramController
 {
     
     public class Controller : TelegramController<MasterContext> {
-        private readonly ILogger _logger;
-        
+        private readonly ILogger<Controller> _logger;
         protected readonly IMemoryCache Cache;
         protected readonly IConfiguration Configuration;
         protected readonly IRayshiftClient RayshiftClient;
 
-        public Controller(ILogger logger, IMemoryCache cache, IConfiguration configuration, IRayshiftClient rayshiftClient) {
+        public Controller(ILogger<Controller> logger, IMemoryCache cache, IConfiguration configuration, IRayshiftClient rayshiftClient) {
             _logger = logger;
             Cache = cache;
             Configuration = configuration;
