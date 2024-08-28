@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -7,7 +9,7 @@ using Rayshift.Models;
 
 namespace Rayshift.Test {
     public class RayshiftClientTests {
-        private const Region Region = Models.Region.Jp;
+        private const Region Region = Models.Region.Na;
 
         private RayshiftClient _client;
         private string _apiKey, _friendCode;
@@ -53,6 +55,7 @@ namespace Rayshift.Test {
         }
 
         private async Task CheckImage(HttpClient client, string url) {
+            Console.WriteLine($"URL: {url}");
             var response = await client.GetAsync(url);
             Assert.True(response.IsSuccessStatusCode);
             Assert.True(Regex.IsMatch(response.Content.Headers.ContentType.ToString(), "image/(png|jpeg)"));

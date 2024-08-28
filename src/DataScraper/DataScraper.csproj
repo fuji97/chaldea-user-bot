@@ -1,13 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <LangVersion>9</LangVersion>
-        <TargetFramework>net5.0</TargetFramework>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="HtmlAgilityPack" Version="1.11.37" />
-      <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.2.1" />
-    </ItemGroup>
-
+  <PropertyGroup>
+    <LangVersion>default</LangVersion>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.37" />
+    <PackageReference Include="HtmlAgilityPack.CssSelectors.NetCore" Version="1.2.1" />
+  </ItemGroup>
 </Project>
