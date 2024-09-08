@@ -176,9 +176,6 @@ try {
         var botInfo = GetBotInfo(botKey).Result;
         logger.LogInformation("Listening on bot [@{Username}] on path {BasePath}", botInfo.Username, basePath);
     }
-    
-    // Handle exceptions
-    app.UseExceptionHandler();
 
     app.UseHttpsRedirection();
 
