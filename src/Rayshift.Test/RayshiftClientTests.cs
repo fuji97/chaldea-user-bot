@@ -23,8 +23,8 @@ namespace Rayshift.Test {
             _apiKey = configuration["ApiKey"];
             _friendCode = configuration["FriendCode"];
             
-            Assert.IsNotNull(_apiKey, "Missing API Key");
-            Assert.IsNotNull(_friendCode, "Missing Friend Code");
+            Assert.That(_apiKey, Is.Not.Null, "Missing API Key");
+            Assert.That(_friendCode, Is.Not.Null, "Missing Friend Code");
             
             _client = new RayshiftClient(_apiKey);
         }
@@ -33,22 +33,22 @@ namespace Rayshift.Test {
         public async Task TestDecks() {
             var result = await _client.GetSupportDeck(Region, _friendCode);
             
-            Assert.IsNotNull(result);
+            Assert.That(result, Is.Not.Null);
             await CheckImages(result);
         }
         
         [Test]
         public async Task TestLookup() {
             var result = await _client.RequestSupportLookup(Region, _friendCode, async response => {
-                Assert.IsNotNull(response);
+                Assert.That(response, Is.Not.Null);
                 await CheckImages(response);
             });
             
-            Assert.True(result);
+            Assert.That(result, Is.True);
         }
 
         private async Task CheckImages(ApiResponse apiResponse) {
-            Assert.IsNotNull(apiResponse.Response);
+            Assert.That(apiResponse.Response, Is.Not.Null);
             using (var client = new HttpClient()) {
                 await CheckImage(client, apiResponse.Response.SupportList(Region));
             }
@@ -57,8 +57,8 @@ namespace Rayshift.Test {
         private async Task CheckImage(HttpClient client, string url) {
             Console.WriteLine($"URL: {url}");
             var response = await client.GetAsync(url);
-            Assert.True(response.IsSuccessStatusCode);
-            Assert.True(Regex.IsMatch(response.Content.Headers.ContentType.ToString(), "image/(png|jpeg)"));
+            Assert.That(response.IsSuccessStatusCode, Is.True);
+            Assert.That(Regex.IsMatch(response.Content.Headers.ContentType.ToString(), "image/(png|jpeg)"), Is.True);
         }
     }
 }

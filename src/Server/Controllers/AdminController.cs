@@ -10,33 +10,25 @@ using Telegram.Bot.Advanced.Core.Holder;
 namespace Server.Controllers {
     [ApiController]
     [Route("[controller]")]
-    public class AdminController : Controller {
-        private readonly ITelegramHolder _holder;
-        private readonly IConfiguration _configuration;
-        
-
-        public AdminController(ITelegramHolder holder, IConfiguration configuration) {
-            _holder = holder;
-            _configuration = configuration;
-        }
-        
+    public class AdminController(ITelegramHolder holder, IConfiguration configuration) : ControllerBase {
         // GET
         [HttpGet("set_webhook/{endpoint}")]
         public async Task<IActionResult> SetWebhook([FromRoute] string endpoint) {
             List<string> webhooks = new List<string>();
-            var bot = _holder.FirstOrDefault(b => b.Endpoint == endpoint);
-            if (bot != null) {
-                await bot.Bot.SetWebhookAsync(_configuration["BaseUrl"] + _configuration["BasePath"] +
-                                              bot.Endpoint);
-                webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
-            }
+            var bot = holder.FirstOrDefault(b => b.Endpoint == endpoint);
+            
+            if (bot == null) 
+                return Ok(webhooks);
+            
+            await bot.Bot.SetWebhookAsync(configuration["BaseUrl"] + configuration["BasePath"] +
+                                          bot.Endpoint);
+            webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
             return Ok(webhooks);
         }
         
         [HttpGet("remove_webhook/{endpoint}")]
         public async Task<IActionResult> RemoveWebhook([FromRoute] string endpoint) {
-            List<string> webhooks = new List<string>();
-            var bot = _holder.FirstOrDefault(b => b.Endpoint == endpoint);
+            var bot = holder.FirstOrDefault(b => b.Endpoint == endpoint);
             if (bot != null) {
                 await bot.Bot.DeleteWebhookAsync();
             }

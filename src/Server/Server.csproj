@@ -10,15 +10,44 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="5.0.10" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="5.0.10" />
-    <PackageReference Include="Serilog.AspNetCore" Version="4.1.0" />
-    <PackageReference Include="Serilog.Settings.Configuration" Version="3.3.0" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.2" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.0" />
     <PackageReference Include="Telegram.Bot.Advanced" Version="5.0.0-beta" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DataScraper\DataScraper.csproj" />
     <ProjectReference Include="..\Rayshift\Rayshift.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="out\out\out\out\out\web.config" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\web.config" />
+    <_ContentIncludedByDefault Remove="out\out\out\web.config" />
+    <_ContentIncludedByDefault Remove="out\out\web.config" />
+    <_ContentIncludedByDefault Remove="out\web.config" />
+    <_ContentIncludedByDefault Remove="out\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="out\appsettings.json" />
+    <_ContentIncludedByDefault Remove="out\out\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="out\out\appsettings.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\appsettings.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\appsettings.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\out\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\out\appsettings.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\out\Server.deps.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\out\Server.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\Server.deps.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\out\Server.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\Server.deps.json" />
+    <_ContentIncludedByDefault Remove="out\out\out\Server.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="out\out\Server.deps.json" />
+    <_ContentIncludedByDefault Remove="out\out\Server.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="out\Server.deps.json" />
+    <_ContentIncludedByDefault Remove="out\Server.runtimeconfig.json" />
   </ItemGroup>
 </Project>
