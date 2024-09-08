@@ -2,15 +2,13 @@ version: '3.0'
 
 services:
   db:
-    image: postgres:12
+    image: postgres:16
     environment:
       POSTGRES_USER: chaldeabot
       POSTGRES_PASSWORD: chaldeabot
     volumes:
       - dbdata:/var/lib/postgresql/data
     restart: always
-    ports:
-    - "5432:5432"
     container_name: chaldeabot_db
   chaldeabot:
     environment:
