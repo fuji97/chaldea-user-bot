@@ -5,21 +5,7 @@ using Telegram.Bot.Advanced.DbContexts;
 
 namespace Server.DbContext
 {
-    public class MasterContext : TelegramContext {
-        protected readonly IConfiguration _configuration;
-
-        public MasterContext(IConfiguration configuration) {
-            _configuration = configuration;
-        }
-
-        public MasterContext() {
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-            base.OnConfiguring(optionsBuilder);
-            optionsBuilder.UseNpgsql(Utils.ConnectionStringFromUri(_configuration["ConnectionString"]));
-        }
-
+    public class MasterContext(DbContextOptions<MasterContext> options) : TelegramContext(options) {
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             base.OnModelCreating(modelBuilder);
 
