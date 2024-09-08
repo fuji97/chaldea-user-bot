@@ -70,7 +70,7 @@ try {
     builder.Services.AddTelegramHolder(new TelegramBotData(options => {
             options.CreateTelegramBotClient(botKey);
             options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
-                .AddControllers(typeof(GroupController), typeof(InlineController), typeof(PrivateController))
+                .AddControllers(typeof(GroupController), typeof(PrivateController))
                 .RegisterNewsletterController<MasterContext>());
                     
             options.BasePath = basePath;

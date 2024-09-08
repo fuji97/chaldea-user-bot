@@ -1,18 +1,18 @@
 using Server.DbContext;
 using Telegram.Bot.Advanced.DbContexts;
 
-namespace Server.Infrastructure {
-    public class DataSeeder {
-        private readonly MasterContext _context;
+namespace Server.Infrastructure;
 
-        public DataSeeder(MasterContext context) {
-            _context = context;
-        }
+public class DataSeeder {
+    private readonly MasterContext _context;
 
-        public void SeedData() {
-            _context.Newsletters.Add(new Newsletter("startup", "Ricevi una notifica quando il bot viene avviato"));
-            _context.Newsletters.Add(new Newsletter("update", "Ricevi una notifica quando il bot viene aggiornato"));
-            _context.Newsletters.Add(new Newsletter("shutdown", "Ricevi una notifica quando il bot viene stoppato"));
-        }
+    public DataSeeder(MasterContext context) {
+        _context = context;
+    }
+
+    public void SeedData() {
+        _context.Newsletters.Add(new Newsletter("startup", "Ricevi una notifica quando il bot viene avviato"));
+        _context.Newsletters.Add(new Newsletter("update", "Ricevi una notifica quando il bot viene aggiornato"));
+        _context.Newsletters.Add(new Newsletter("shutdown", "Ricevi una notifica quando il bot viene stoppato"));
     }
 }

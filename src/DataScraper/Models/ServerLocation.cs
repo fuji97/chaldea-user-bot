@@ -1,6 +1,6 @@
-namespace DataScraper.Models {
-    public enum ServerLocation {
-        US,
-        JP
-    }
+namespace DataScraper.Models;
+
+public enum ServerLocation {
+    US,
+    JP
 }

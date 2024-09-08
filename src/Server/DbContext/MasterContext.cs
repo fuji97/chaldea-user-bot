@@ -3,21 +3,20 @@ using Microsoft.Extensions.Configuration;
 using Server.Infrastructure;
 using Telegram.Bot.Advanced.DbContexts;
 
-namespace Server.DbContext
-{
-    public class MasterContext(DbContextOptions<MasterContext> options) : TelegramContext(options) {
-        protected override void OnModelCreating(ModelBuilder modelBuilder) {
-            base.OnModelCreating(modelBuilder);
+namespace Server.DbContext;
 
-            modelBuilder.Entity<RegisteredChat>().HasKey(t => new { t.ChatId, t.MasterId });
+public class MasterContext(DbContextOptions<MasterContext> options) : TelegramContext(options) {
+    protected override void OnModelCreating(ModelBuilder modelBuilder) {
+        base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<TelegramChat>().ToTable("TelegramChats");
-            modelBuilder.Entity<ChatSettings>().ToTable("TelegramChats");
-        }
+        modelBuilder.Entity<RegisteredChat>().HasKey(t => new { t.ChatId, t.MasterId });
 
-        public DbSet<Master> Masters { get; set; }
-        public DbSet<RegisteredChat> RegisteredChats { get; set; }
-        
-        public DbSet<ChatSettings> ChatSettings { get; set; }
+        modelBuilder.Entity<TelegramChat>().ToTable("TelegramChats");
+        modelBuilder.Entity<ChatSettings>().ToTable("TelegramChats");
     }
+
+    public DbSet<Master> Masters { get; set; }
+    public DbSet<RegisteredChat> RegisteredChats { get; set; }
+        
+    public DbSet<ChatSettings> ChatSettings { get; set; }
 }

@@ -1,8 +1,8 @@
-namespace Rayshift.Models {
-    public enum MessageCode {
-        InQueue,
-        Processing,
-        Finished,
-        Other
-    }
+namespace Rayshift.Models;
+
+public enum MessageCode {
+    InQueue,
+    Processing,
+    Finished,
+    Other
 }
