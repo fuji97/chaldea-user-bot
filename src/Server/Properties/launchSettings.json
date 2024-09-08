@@ -8,28 +8,23 @@
     }
   },
   "profiles": {
-    "IIS Express": {
-      "commandName": "IISExpress",
-      "environmentVariables": {
-        "CONNECTION_STRING": "Server=127.0.0.1;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;",
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "Server": {
+    "Server (webhook)": {
       "commandName": "Project",
       "environmentVariables": {
-        "CONNECTION_STRING": "Server=127.0.0.1;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "WEBHOOK": "true"
+        "MODE": "webhook"
       },
       "commandLineArgs": "--migrate true --seed true",
       "applicationUrl": "https://localhost:8001;http://localhost:8000"
     },
-    "Docker": {
-      "commandName": "Docker",
-      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-      "publishAllPorts": true,
-      "useSSL": true
-    }
+    "Server (polling)": {
+    "commandName": "Project",
+    "environmentVariables": {
+      "ASPNETCORE_ENVIRONMENT": "Development",
+      "MODE": "polling"
+    },
+    "commandLineArgs": "--migrate true --seed true",
+    "applicationUrl": "https://localhost:8001;http://localhost:8000"
+  }
   }
 }
