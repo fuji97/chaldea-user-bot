@@ -17,38 +17,11 @@
     <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.2" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.0" />
     <PackageReference Include="Telegram.Bot" Version="21.11.0" />
-    <PackageReference Include="Telegram.Bot.Advanced" Version="8.0.0-alpha" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8" />
+    <PackageReference Include="Telegram.Bot.Advanced" Version="8.0.0-alpha" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DataScraper\DataScraper.csproj" />
     <ProjectReference Include="..\Rayshift\Rayshift.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="out\out\out\out\out\web.config" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\web.config" />
-    <_ContentIncludedByDefault Remove="out\out\out\web.config" />
-    <_ContentIncludedByDefault Remove="out\out\web.config" />
-    <_ContentIncludedByDefault Remove="out\web.config" />
-    <_ContentIncludedByDefault Remove="out\appsettings.Development.json" />
-    <_ContentIncludedByDefault Remove="out\appsettings.json" />
-    <_ContentIncludedByDefault Remove="out\out\appsettings.Development.json" />
-    <_ContentIncludedByDefault Remove="out\out\appsettings.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\appsettings.Development.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\appsettings.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\appsettings.Development.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\appsettings.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\out\appsettings.Development.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\out\appsettings.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\out\Server.deps.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\out\Server.runtimeconfig.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\Server.deps.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\out\Server.runtimeconfig.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\Server.deps.json" />
-    <_ContentIncludedByDefault Remove="out\out\out\Server.runtimeconfig.json" />
-    <_ContentIncludedByDefault Remove="out\out\Server.deps.json" />
-    <_ContentIncludedByDefault Remove="out\out\Server.runtimeconfig.json" />
-    <_ContentIncludedByDefault Remove="out\Server.deps.json" />
-    <_ContentIncludedByDefault Remove="out\Server.runtimeconfig.json" />
   </ItemGroup>
 </Project>
