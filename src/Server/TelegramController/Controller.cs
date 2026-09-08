@@ -145,20 +145,20 @@ public class Controller : TelegramController<MasterContext> {
                 } else {
                     _logger.LogError("Errore nell'ottenere la support list di {Master} da rayshift.io",
                         master.ToString());
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                    await BotData.Bot.SendMessage(TelegramChat.ToChatId(),
                         "Errore nell'ottenere la support list da Rayshift.io", cancellationToken: timeout.Token);
                 }
             } catch (TaskCanceledException e) {
                 _logger.LogError(e, "Timeout while retrieving support list");
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                await BotData.Bot.SendMessage(TelegramChat.ToChatId(),
                     "Timeout mentre ottengo la support list da Rayshift.io");
             } catch (NullReferenceException) {
                 _logger.LogError("{Master} non trovato su rayshift.io", master.ToString());
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                await BotData.Bot.SendMessage(TelegramChat.ToChatId(),
                     "Master non trovato su Rayshift.io");
             } catch (Exception e) {
                 _logger.LogError(e, "Exception thrown while retrieving support list");
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.ToChatId(),
+                await BotData.Bot.SendMessage(TelegramChat.ToChatId(),
                     "Errore nell'ottenere la support list da Rayshift.io");
             }
         } else if (master.SupportList != null) {
@@ -171,10 +171,10 @@ public class Controller : TelegramController<MasterContext> {
 
         if (album.Any()) {
             try {
-                await BotData.Bot.SendMediaGroupAsync(TelegramChat.Id, album);
+                await BotData.Bot.SendMediaGroup(TelegramChat.Id, album);
             } catch (Exception e) {
                 _logger.LogError(e, "Exception thrown while sending the support list album");
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Errore di invio delle immagini della support list");
+                await BotData.Bot.SendMessage(TelegramChat.Id, "Errore di invio delle immagini della support list");
             }
         }
 
@@ -187,11 +187,11 @@ public class Controller : TelegramController<MasterContext> {
             messageText += $"\n\n<a href=\"{BuildRayshiftUrl(master)}\">Rayshift.io</a>";
         }
 
-        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, messageText, parseMode: ParseMode.Html, 
+        await BotData.Bot.SendMessage(TelegramChat.Id, messageText, parseMode: ParseMode.Html, 
             linkPreviewOptions: new LinkPreviewOptions() {
                 IsDisabled = true
             });
-        await BotData.Bot.DeleteMessageAsync(TelegramChat.ToChatId(), loadingMessage.MessageId);
+        await BotData.Bot.DeleteMessage(TelegramChat.ToChatId(), loadingMessage.MessageId);
     }
 
     protected Uri BuildRayshiftUrl(Master master) {
@@ -258,13 +258,13 @@ public class Controller : TelegramController<MasterContext> {
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex.Message);
+            _logger.LogError("{Message}", ex.Message);
             error = true;
             await ReplyTextMessageAsync(text);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.Message);
+            _logger.LogError("{Message}", ex.Message);
             await ReplyTextMessageAsync(text);
             throw;
         }
@@ -293,7 +293,7 @@ public class Controller : TelegramController<MasterContext> {
     }
 
     protected async Task<bool> IsUserAdmin(long chatId, long userId) {
-        return (await BotData.Bot.GetChatAdministratorsAsync(chatId))
+        return (await BotData.Bot.GetChatAdministrators(chatId))
             .Any(ua => ua.User.Id == userId);
     }
 }

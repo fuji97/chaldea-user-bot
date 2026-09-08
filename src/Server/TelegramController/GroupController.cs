@@ -45,7 +45,7 @@ public class GroupController(
     [CommandFilter("link")]
     public async Task LinkMaster() {
         if (MessageCommand.Parameters.Count < 1) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Devi passarmi il nome del master che vuoi collegare");
         }
         else {
@@ -53,7 +53,7 @@ public class GroupController(
                 m.User.Id == Update.Message.From.Id && m.Name == MessageCommand.Parameters.JoinStrings(" "));
 
             if (master == null) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
             }
             else {
@@ -63,11 +63,11 @@ public class GroupController(
                 if (chat == null) {
                     TelegramContext.RegisteredChats.Add(new RegisteredChat(master.Id, TelegramChat.Id));
                     if (await SaveChanges()) {
-                        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                        await BotData.Bot.SendMessage(TelegramChat.Id,
                             "Master collegato correttamente");                    }
                 }
                 else {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                    await BotData.Bot.SendMessage(TelegramChat.Id,
                         "Master già collegato"); 
                 }
             }
@@ -77,7 +77,7 @@ public class GroupController(
     [CommandFilter("unlink")]
     public async Task UnlinkMaster() {
         if (MessageCommand.Parameters.Count < 1) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Devi passarmi il nome del master che vuoi scollegare");
         }
 
@@ -89,13 +89,13 @@ public class GroupController(
             .FirstOrDefaultAsync(c => c.Master.Name == name);
 
         if (master == null) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Nessun Master collegato con il nome " + name);
         }
         else {
             if (Update.Message.From.Id != master.Master.UserId) {
                 if (!await IsSenderAdmin()) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                    await BotData.Bot.SendMessage(TelegramChat.Id,
                         "Non puoi scollegare questo utente");
                     return;
                 }
@@ -103,7 +103,7 @@ public class GroupController(
                 
             TelegramContext.RegisteredChats.Remove(master);
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Master scollegato correttamente"); 
             }
         }
@@ -113,7 +113,7 @@ public class GroupController(
     public async Task ShowMasterGroups() {
         if (MessageCommand.Parameters.Count < 1) {
             logger.LogDebug("Ricevuto comando /master senza parametri");
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Devi passarmi il nome del master che vuoi mostrare");
         }
         else {
@@ -121,7 +121,7 @@ public class GroupController(
                 .Include(m => m.RegisteredChats)
                 .Include(m => m.User).SingleOrDefault(m => m.Name == MessageCommand.Parameters.JoinStrings(" "));
             if (master == null || master.RegisteredChats.All(c => c.ChatId != TelegramChat.Id)) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
             }
             else {
@@ -147,7 +147,7 @@ public class GroupController(
         InlineKeyboardCommands.EnableServantListNotifications, 
         InlineKeyboardCommands.DisableServantListNotifications)]
     public async Task SettingsCallback() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var originalMessage = Update.CallbackQuery.Message;
         if (await IsUserAdmin(TelegramChat.Id, Update.CallbackQuery.From.Id)) {
@@ -170,7 +170,7 @@ public class GroupController(
             }
                 
             if (await SaveChanges()) {
-                await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, originalMessage.MessageId, 
+                await BotData.Bot.EditMessageText(TelegramChat.Id, originalMessage.MessageId, 
                     BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
             }
         }

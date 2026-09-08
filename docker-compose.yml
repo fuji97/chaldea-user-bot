@@ -20,6 +20,8 @@ services:
       # - SEED=true
       # - MODE=webhook|polling
       # - BasePath=/telegram/
+      # - Endpoint=chaldeabot
+      # - WebhookSecret=XXXXXXXXXXXXXXXX
       # - BotKey=00000:XXXXXXXXXXXXXXXXXXXXX
       # - BaseUrl=https://localhost
       # - Rayshift__ApiKey=XXXXXXXXXXXXXXXXXXXX

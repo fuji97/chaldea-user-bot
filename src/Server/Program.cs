@@ -10,10 +10,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Npgsql;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Rayshift;
-using Serilog;
-using Serilog.Exceptions;
-using Serilog.Sinks.SystemConsole.Themes;
 using Server.DbContext;
 using Server.Exceptions;
 using Server.Infrastructure;
@@ -26,7 +28,8 @@ using Telegram.Bot.Advanced.DbContexts;
 using Telegram.Bot.Advanced.Extensions;
 using Telegram.Bot.Advanced.Models;
 using Telegram.Bot.Advanced.Services;
-using Telegram.Bot.Types;
+
+const string defaultEndpoint = "chaldeabot";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,48 +44,71 @@ builder.Configuration
     .AddEnvironmentVariables()
     .AddUserSecrets<Program>();
 
-Log.Logger = new LoggerConfiguration()
-    .Enrich.FromLogContext()
-    .Enrich.WithExceptionDetails()
-    .WriteTo.Console(theme: AnsiConsoleTheme.Code, outputTemplate: "{Message:lj}{NewLine}{Exception}")
-    .WriteTo.OpenTelemetry()
-    .ReadFrom.Configuration(builder.Configuration)
-    .CreateLogger();
-    
+using var bootstrapLoggerFactory = LoggerFactory.Create(logging => logging.AddConsole());
+var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("Server.Program");
+
 try {
-    // Add Serilog
-    builder.Services.AddSerilog();
-    
+    // Logs, traces and metrics through the OpenTelemetry SDK (OTLP endpoint from OTEL_EXPORTER_OTLP_* variables)
+    builder.Logging.AddOpenTelemetry(logging => {
+        logging.IncludeScopes = true;
+        logging.IncludeFormattedMessage = true;
+    });
+
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService(
+            serviceName: "chaldeabot",
+            serviceVersion: Assembly.GetEntryAssembly()?.GetName().Version?.ToString()))
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddNpgsql())
+        .WithMetrics(metrics => metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation())
+        .UseOtlpExporter();
+
     var botKey = builder.Configuration["BotKey"];
     var basePath = builder.Configuration["BasePath"];
-    
+    var endpoint = builder.Configuration["Endpoint"];
+
     if (string.IsNullOrEmpty(botKey)) {
         throw new InvalidParameterException("BotKey parameter is missing.");
     }
-            
+
     if (string.IsNullOrEmpty(basePath)) {
         throw new InvalidParameterException("BasePath parameter is missing.");
     }
-    
+
+    if (string.IsNullOrEmpty(endpoint)) {
+        endpoint = defaultEndpoint;
+    }
+
+    var mode = builder.Configuration["MODE"];
+    if (mode != "webhook" && mode != "polling") {
+        mode = builder.Environment.IsDevelopment() ? "polling" : "webhook";
+    }
+
     builder.Services.AddDbContext<MasterContext>(
         options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
-    
+
     builder.Services.AddTelegramHolder(new TelegramBotData(options => {
             options.CreateTelegramBotClient(botKey);
+            options.Endpoint = endpoint;
             options.DispatcherBuilder = (new DispatcherBuilder<MasterContext, Controller>()
                 .AddControllers(typeof(GroupController), typeof(PrivateController))
                 .RegisterNewsletterController<MasterContext>());
-                    
+
             options.BasePath = basePath;
-                    
+
             options.DefaultUserRole.Add(
                 new UserRole("fuji97", ChatRole.Administrator));
-                    
+
             // options.StartupNewsletter = new StartupNewsletter("startup", async (data, chat, service) => {
             //     var startupText = $"<i>ChaldeaBot avviato\n\nVersione: v{_version}</i>";
             //
             //     try {
-            //         await data.Bot.SendTextMessageAsync(chat.Id,
+            //         await data.Bot.SendMessage(chat.Id,
             //             startupText, ParseMode.Html);
             //     }
             //     catch (Exception e) {
@@ -92,7 +118,33 @@ try {
             // });
         })
     );
-            
+
+    switch (mode) {
+        case "webhook": {
+            var baseUrl = builder.Configuration["BaseUrl"];
+            var webhookSecret = builder.Configuration["WebhookSecret"];
+
+            if (string.IsNullOrEmpty(baseUrl)) {
+                throw new InvalidParameterException("BaseUrl parameter is missing.");
+            }
+
+            if (string.IsNullOrEmpty(webhookSecret)) {
+                throw new InvalidParameterException("WebhookSecret parameter is missing.");
+            }
+
+            builder.Services.AddTelegramWebhooks(options => {
+                options.BaseUri = new Uri(baseUrl, UriKind.Absolute);
+                options.SecretToken = webhookSecret;
+            });
+            break;
+        }
+        case "polling":
+            builder.Services.AddTelegramPolling();
+            break;
+    }
+
+    builder.Services.AddStartupNewsletter();
+
     // Enable synchronousIO
     builder.Services.Configure<KestrelServerOptions>(options => {
         options.AllowSynchronousIO = true;
@@ -112,70 +164,45 @@ try {
     builder.Services.AddEndpointsApiExplorer();
 
     var app = builder.Build();
-    
-    
 
-    using (var scope = app.Services.CreateScope()) {
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        
-        logger.LogInformation("ChaldeaBot v{Version}", Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "--");
-        
-        //var sanitizer = services.GetRequiredService<DbSanitizer>();
-    
-        // Initialize database
-        if (app.Configuration.GetValue<bool>("MIGRATE")) {
-            using var serviceScope = services.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var context = serviceScope.ServiceProvider.GetService<MasterContext>();
-            logger.LogInformation("Application started with --migrate true. Applying migrations...");
-            context.Database.Migrate();
-        }
-        
-        // Seed data
-        if (app.Configuration.GetValue<bool>("SEED")) {
-            using var serviceScope = services.GetRequiredService<IServiceScopeFactory>().CreateScope();
-            var context = serviceScope.ServiceProvider.GetService<MasterContext>();
-            logger.LogInformation("Application started with --seed true. Seeding data...");
-            app.SeedData();
-        }
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-        if (app.Configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
-            logger.LogInformation("Using forwarded headers");
-            app.UseForwardedHeaders(new ForwardedHeadersOptions {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            });
-        }
-        
-        logger.LogInformation("Sending startup newsletters");
-        app.UseStartupNewsletter();
+    logger.LogInformation("ChaldeaBot v{Version}", Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "--");
 
-        var mode = app.Configuration["MODE"];
-        if (mode != "webhook" && mode != "polling") {
-            if (app.Environment.IsDevelopment()) {
-                logger.LogInformation("Development environment. Using polling mode");
-                mode = "polling";
-            }
-            else {
-                logger.LogInformation("Production environment. Using webhook mode");
-                mode = "webhook";
-            }
-        }
-        
-        switch (mode) {
-            case "webhook":
-                logger.LogInformation("Listening to Telegram requests");
-                app.UseTelegramRouting();
-                break;
-            case "polling":
-                logger.LogInformation("Starting in Polling mode");
-                app.UseDeveloperExceptionPage();
-                app.UseTelegramPolling();
-                break;
-        }
-        
-        var botInfo = GetBotInfo(botKey).Result;
-        logger.LogInformation("Listening on bot [@{Username}] on path {BasePath}", botInfo.Username, basePath);
+    // Initialize database
+    if (app.Configuration.GetValue<bool>("MIGRATE")) {
+        await using var serviceScope = app.Services.CreateAsyncScope();
+        var context = serviceScope.ServiceProvider.GetRequiredService<MasterContext>();
+        logger.LogInformation("Application started with --migrate true. Applying migrations...");
+        await context.Database.MigrateAsync();
     }
+
+    // Seed data
+    if (app.Configuration.GetValue<bool>("SEED")) {
+        logger.LogInformation("Application started with --seed true. Seeding data...");
+        app.SeedData();
+    }
+
+    if (app.Configuration.GetValue<bool>("USE_FORWARDED_HEADERS")) {
+        logger.LogInformation("Using forwarded headers");
+        app.UseForwardedHeaders(new ForwardedHeadersOptions {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+        });
+    }
+
+    switch (mode) {
+        case "webhook":
+            logger.LogInformation("Listening to Telegram requests");
+            app.MapTelegramWebhooks();
+            break;
+        case "polling":
+            logger.LogInformation("Starting in Polling mode");
+            app.UseDeveloperExceptionPage();
+            break;
+    }
+
+    var botInfo = await new TelegramBotClient(botKey).GetMe();
+    logger.LogInformation("Listening on bot [@{Username}] on path {BasePath}", botInfo.Username, basePath);
 
     app.UseHttpsRedirection();
 
@@ -183,17 +210,7 @@ try {
 
     app.MapControllers();
 
-    app.Run();
+    await app.RunAsync();
 } catch (Exception ex) when (ex is not HostAbortedException && ex.Source != "Microsoft.EntityFrameworkCore.Design") {   // see https://github.com/dotnet/efcore/issues/29923
-    Log.Fatal(ex, "Host terminated unexpectedly");
-} finally {
-    Log.CloseAndFlush();
-}
-
-return;
-
-async Task<User> GetBotInfo(string token) {
-    var botClient = new TelegramBotClient(token);
-
-    return await botClient.GetMeAsync();
+    bootstrapLogger.LogCritical(ex, "Host terminated unexpectedly");
 }

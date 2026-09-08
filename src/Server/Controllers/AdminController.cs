@@ -4,15 +4,17 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Server.DbContext;
 using Telegram.Bot;
 using Telegram.Bot.Advanced.Core.Holder;
+using Telegram.Bot.Advanced.Extensions;
 
 namespace Server.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class AdminController(ITelegramHolder holder, IConfiguration configuration) : ControllerBase {
+public class AdminController(ITelegramHolder holder, IConfiguration configuration, IOptions<TelegramWebhookOptions> webhookOptions) : ControllerBase {
     // GET
     [HttpGet("set_webhook/{endpoint}")]
     public async Task<IActionResult> SetWebhook([FromRoute] string endpoint) {
@@ -22,9 +24,9 @@ public class AdminController(ITelegramHolder holder, IConfiguration configuratio
         if (bot == null) 
             return Ok(webhooks);
             
-        await bot.Bot.SetWebhookAsync(configuration["BaseUrl"] + configuration["BasePath"] +
-                                      bot.Endpoint);
-        webhooks.Add((await bot.Bot.GetWebhookInfoAsync()).Url);
+        await bot.Bot.SetWebhook(configuration["BaseUrl"] + configuration["BasePath"] +
+                                      bot.Endpoint, secretToken: webhookOptions.Value.SecretToken);
+        webhooks.Add((await bot.Bot.GetWebhookInfo()).Url);
         return Ok(webhooks);
     }
         
@@ -32,7 +34,7 @@ public class AdminController(ITelegramHolder holder, IConfiguration configuratio
     public async Task<IActionResult> RemoveWebhook([FromRoute] string endpoint) {
         var bot = holder.FirstOrDefault(b => b.Endpoint == endpoint);
         if (bot != null) {
-            await bot.Bot.DeleteWebhookAsync();
+            await bot.Bot.DeleteWebhook();
         }
         return Ok("Done");
     }

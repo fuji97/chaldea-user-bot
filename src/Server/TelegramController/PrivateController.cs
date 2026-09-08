@@ -35,7 +35,7 @@ public class PrivateController(
     public async Task ListMasters() {
         logger.LogInformation("Ricevuto comando /list in privato");
         var masters = TelegramContext.Masters.Where(m => m.UserId == TelegramChat.Id).Select(m => m.Name);
-        await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+        await BotData.Bot.SendMessage(TelegramChat.Id,
             "<b>Lista dei tuoi Master:</b>\n" +
             string.Join("\n", masters),
             parseMode: ParseMode.Html);
@@ -49,7 +49,7 @@ public class PrivateController(
         if (MessageCommand.Parameters.Count < 1) {
             TelegramChat.State = ConversationState.Nome;
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, inviami il nome che vuoi usare");
+                await BotData.Bot.SendMessage(TelegramChat.Id, "Ok, inviami il nome che vuoi usare");
             }
         }
         else {
@@ -59,7 +59,7 @@ public class PrivateController(
 
     [ChatStateFilter(ConversationState.Nome), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
     public async Task GetNome() {
-        logger.LogInformation($"Nome ricevuto da @{TelegramChat?.Username}: {MessageCommand.Text}");
+        logger.LogInformation("Nome ricevuto da @{Username}: {Text}", TelegramChat?.Username, MessageCommand.Text);
         if (TelegramChat != null) {
             await SetMasterName(MessageCommand.Text);
         }
@@ -70,12 +70,12 @@ public class PrivateController(
             TelegramChat.State = ConversationState.FriendCode;
             TelegramChat["nome"] = name;
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Ok, inviami il friend code in formato 123456789");
             }
         }
         else {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Nome invalido o già in uso, sceglierne un altro");
         }
     }
@@ -88,41 +88,39 @@ public class PrivateController(
 
     [ChatStateFilter(ConversationState.FriendCode), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
     public async Task GetFriendCode() {
-        logger.LogInformation($"Ricevuto friend code: {Update.Message.Text}");
+        logger.LogInformation("Ricevuto friend code: {FriendCode}", Update.Message.Text);
         if (Regex.IsMatch(Update.Message.Text, @"^\d{5}")) {
             TelegramChat["friend_code"] = Update.Message.Text;
             TelegramChat.State = ConversationState.Server;
             if (await SaveChanges()) {
-                await BotData.Bot.SendTextMessageAsync(
-                    TelegramChat.Id,
-                    $"E' stato impostato come friend code: '{Update.Message.Text}'. Sarà possibile cambiarlo in seguito.\n" +
-                    $"Ora inviami il server di appartenenza del Master, 'JP' o 'US' (puoi usare la tastiera automatica)",
-                    replyMarkup: new ReplyKeyboardMarkup() {
-                        Keyboard = new[] {
-                            new[] {new KeyboardButton ("JP")},
-                            new[] {new KeyboardButton ("US")}
-                        }
-                    });
+                await BotData.Bot.SendMessage(TelegramChat.Id,
+                $"E' stato impostato come friend code: '{Update.Message.Text}'. Sarà possibile cambiarlo in seguito.\n" +
+                $"Ora inviami il server di appartenenza del Master, 'JP' o 'US' (puoi usare la tastiera automatica)",
+                replyMarkup: new ReplyKeyboardMarkup() {
+                    Keyboard = new[] {
+                        new[] {new KeyboardButton ("JP")},
+                        new[] {new KeyboardButton ("US")}
+                    }
+                });
             }
         }
         else
         {
-            await BotData.Bot.SendTextMessageAsync(
-                TelegramChat.Id,
-                "Il friend code non è valido, deve avere il seguente formato 123456789");
+            await BotData.Bot.SendMessage(TelegramChat.Id,
+            "Il friend code non è valido, deve avere il seguente formato 123456789");
         }
     }
 
     [ChatStateFilter(ConversationState.Server), NoCommandFilter, MessageTypeFilter(MessageType.Text)]
     public async Task GetServer()
     {
-        logger.LogInformation($"Ricevuto server {Update.Message.Text}");
+        logger.LogInformation("Ricevuto server {Server}", Update.Message.Text);
         switch (Update.Message.Text) {
             case "JP":
                 TelegramChat["server"] = ((int) MasterServer.Jp).ToString();
                 TelegramChat.State = ConversationState.SupportList;
                 if (await SaveChanges()) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
+                    await BotData.Bot.SendMessage(TelegramChat.Id, "Server giapponese impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                         replyMarkup: new ReplyKeyboardRemove());
                 }
  
@@ -131,12 +129,12 @@ public class PrivateController(
                 TelegramChat["server"] = ((int)MasterServer.Na).ToString();
                 TelegramChat.State = ConversationState.SupportList;
                 if (await SaveChanges()) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
+                    await BotData.Bot.SendMessage(TelegramChat.Id, "Server americano impostato, inviami lo screen dei tuoi support, /rayshift se vuoi ottenere automaticamente la support list da Rayshift.io o /skip se vuoi saltare questa fase",
                         replyMarkup: new ReplyKeyboardRemove());
                 }
                 break;
             default:
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Server non valido, specificare 'JP' o 'US'");
+                await BotData.Bot.SendMessage(TelegramChat.Id, "Server non valido, specificare 'JP' o 'US'");
                 break;
         }
     }
@@ -157,11 +155,11 @@ public class PrivateController(
                     var supportListUrl = await GetSupportImageFromApiResponse(result.Response, region);
                     try {
                         await ReplyPhotoAsync(new InputFileUrl(new Uri(supportListUrl)));
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, message.MessageId,
+                        await BotData.Bot.EditMessageText(TelegramChat.Id, message.MessageId,
                             "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
                     } catch (ApiRequestException e) {
                         logger.LogError(e, "Exception thrown while sending support list");
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, message.MessageId,
+                        await BotData.Bot.EditMessageText(TelegramChat.Id, message.MessageId,
                             "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
                     }
                         
@@ -195,7 +193,7 @@ public class PrivateController(
         TelegramChat["support_photo"] = null;
         TelegramChat.State = ConversationState.ServantList;
         if (await SaveChanges()) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Hai saltato l'assegnazione della support list\nOra inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+            await BotData.Bot.SendMessage(TelegramChat.Id, "Hai saltato l'assegnazione della support list\nOra inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
         }
     }
 
@@ -206,7 +204,7 @@ public class PrivateController(
         TelegramChat["support_photo"] = Update.Message.Photo[0].FileId;
         TelegramChat.State = ConversationState.ServantList;
         if (await SaveChanges()) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, $"Ok, ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
+            await BotData.Bot.SendMessage(TelegramChat.Id, $"Ok, ora inviami lo screen della lista dei tuoi servant o /skip se vuoi saltare questa fase");
         }
     }
         
@@ -217,7 +215,7 @@ public class PrivateController(
             
         var master = await CreateMaster();
         if (master != null) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 $"Ok, Master creato\n" +
                 $"Ora lo puoi collegare alle varie chat con il comando /link {master.Name}");
         }
@@ -243,7 +241,7 @@ public class PrivateController(
 
         var master = await CreateMaster();
         if (master != null) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, 
+            await BotData.Bot.SendMessage(TelegramChat.Id, 
                 "Hai saltato l'assegnazione della servant list\n" +
                 "Ok, Master creato\n" +
                 "Ora lo puoi collegare alle varie chat con il comando /link " + master.Name);
@@ -255,7 +253,7 @@ public class PrivateController(
     [CommandFilter("remove")]
     public async Task RemoveMaster() {
         if (MessageCommand.Parameters.Count < 1) {
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Devi passarmi il nome del master che vuoi cancellare");
         }
         else {
@@ -263,7 +261,7 @@ public class PrivateController(
                 m.UserId == TelegramChat.Id && m.Name == MessageCommand.Parameters.JoinStrings(" "));
 
             if (master == null) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
             }
             else {
@@ -273,7 +271,7 @@ public class PrivateController(
 
                 TelegramContext.Masters.Remove(master);
                 if (await SaveChanges()) {
-                    await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                    await BotData.Bot.SendMessage(TelegramChat.Id,
                         "Master cancellato correttamente");                    
                 }
             }
@@ -284,7 +282,7 @@ public class PrivateController(
     public async Task ShowMasterPrivate() {
         if (MessageCommand.Parameters.Count < 1) {
             logger.LogDebug("Ricevuto comando /master senza parametri");
-            await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+            await BotData.Bot.SendMessage(TelegramChat.Id,
                 "Devi passarmi il nome del master che vuoi mostrare");
         }
         else {
@@ -293,7 +291,7 @@ public class PrivateController(
                 .SingleOrDefault(m => m.Name == MessageCommand.Parameters.JoinStrings(" ") && 
                                       m.UserId == Update.Message.Chat.Id);
             if (master == null) {
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+                await BotData.Bot.SendMessage(TelegramChat.Id,
                     "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
             }
             else {
@@ -302,7 +300,7 @@ public class PrivateController(
                 var settingsText = "Impostazioni:\n\n" +
                                    $"Rayshift: {(master.UseRayshift ? "abilitato" : "disabilitato")}";
                 var settingsKeyboard = BuildSettingsKeyboard(master);
-                await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, settingsText,
+                await BotData.Bot.SendMessage(TelegramChat.Id, settingsText,
                     replyMarkup: settingsKeyboard);
             }
         }
@@ -340,7 +338,7 @@ public class PrivateController(
             return;
         }
 
-        logger.LogDebug($"Impostando l'immagine {Update.Message.Photo[0].FileId} come servant list del Master {master.Name}");
+        logger.LogDebug("Impostando l'immagine {FileId} come servant list del Master {Master}", Update.Message.Photo[0].FileId, master.Name);
         master.ServantList = Update.Message.Photo[0].FileId;
         TelegramChat.State = ConversationState.Idle;
         if (await SaveChanges()) {
@@ -362,7 +360,7 @@ public class PrivateController(
         }
 
         master.ServantList = null;
-        logger.LogDebug($"Impostato null come servant list del Master {master.Name}");
+        logger.LogDebug("Impostato null come servant list del Master {Master}", master.Name);
         TelegramChat.State = ConversationState.Idle;
         if (await SaveChanges()) {
             await ReplyTextMessageAsync("Lista dei servant rimossa correttamente");
@@ -401,7 +399,7 @@ public class PrivateController(
             await SaveChanges();
             return;
         }
-        logger.LogDebug($"Impostando l'immagine {Update.Message.Photo[0].FileId} come support list del Master {master.Name}");
+        logger.LogDebug("Impostando l'immagine {FileId} come support list del Master {Master}", Update.Message.Photo[0].FileId, master.Name);
         master.SupportList = Update.Message.Photo[0].FileId;
         master.UseRayshift = false;
         TelegramChat.State = ConversationState.Idle;
@@ -430,7 +428,7 @@ public class PrivateController(
             return;
         }
 
-        var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
+        var waitingMessage = await BotData.Bot.SendMessage(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
 
         var region = ServerToRegion(master.Server);
 
@@ -444,11 +442,11 @@ public class PrivateController(
                         var supportList = await GetSupportImageFromApiResponse(response.Response!, region);
                         await ReplyPhotoAsync(
                             new InputFileUrl(new Uri(supportList)));
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                        await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                             "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
                     } catch (ApiRequestException e) {
                         logger.LogError(e, "Exception thrown while sending support list");
-                        await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                        await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                             "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
                     }
                     await ReplyTextMessageAsync(
@@ -482,7 +480,7 @@ public class PrivateController(
             return;
         }
 
-        logger.LogDebug($"Impostato null come support list del Master {master.Name}");
+        logger.LogDebug("Impostato null come support list del Master {Master}", master.Name);
         master.SupportList = null;
         master.UseRayshift = false;
         TelegramChat.State = ConversationState.Idle;
@@ -523,7 +521,7 @@ public class PrivateController(
 
     [CallbackCommandFilter(InlineKeyboardCommands.UpdateSupportList)]
     public async Task InlineUpdateSupportList() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var master = await GetMasterFromCallbackData();
         if (master == null) {
@@ -541,7 +539,7 @@ public class PrivateController(
 
     [CallbackCommandFilter(InlineKeyboardCommands.UpdateServantList)]
     public async Task InlineUpdateServantList() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var master = await GetMasterFromCallbackData();
         if (master == null) {
@@ -554,7 +552,7 @@ public class PrivateController(
 
     [CallbackCommandFilter(InlineKeyboardCommands.EnableRayshift)]
     public async Task InlineEnableRayshift() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var master = await GetMasterFromCallbackData();
         if (master == null) {
@@ -567,7 +565,7 @@ public class PrivateController(
             await ReplyTextMessageAsync("Rayshift è già abilitato per questo Master");
         }
         else {
-            var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
+            var waitingMessage = await BotData.Bot.SendMessage(TelegramChat.Id, "Ok, provo ad impostare Rayshift.io come provider\nAttendere per favore...");
 
             var region = ServerToRegion(master.Server);
 
@@ -580,11 +578,11 @@ public class PrivateController(
                             var supportList = await GetSupportImageFromApiResponse(response.Response!, region);
                             await ReplyPhotoAsync(
                                 new InputFileUrl(new Uri(supportList)));
-                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                            await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                                 "Connessione avvenuta con successo! La seguente support list è ottenuta da Rayshift.io:");
                         } catch (ApiRequestException e) {
                             logger.LogError(e, "Exception thrown while sending support list");
-                            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                            await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                                 "Connessione avvenuta con successo ma è fallito l'invio della support list da Rayshift.io. Questo potrebbe impedire il corretto invio delle support list. Per correggere potete provare ad aggiornare la lista manualmente da rayshift.io.");
                         }
                         await ReplyTextMessageAsync(
@@ -606,7 +604,7 @@ public class PrivateController(
 
     [CallbackCommandFilter(InlineKeyboardCommands.DisableRayshift)]
     public async Task InlineDisableRayshift() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var master = await GetMasterFromCallbackData();
         if (master == null) {
@@ -630,7 +628,7 @@ public class PrivateController(
 
     [CallbackCommandFilter(InlineKeyboardCommands.DeleteMaster)]
     public async Task InlineDeleteMaster() {
-        await BotData.Bot.AnswerCallbackQueryAsync(Update.CallbackQuery.Id);
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
             
         var master = await GetMasterFromCallbackData();
         if (master == null) {
@@ -652,10 +650,10 @@ public class PrivateController(
 
         foreach (var chat in chats.Where(chat => chat.Settings.SupportListNotifications)) {
             try {
-                await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, parseMode: ParseMode.Html);
+                await BotData.Bot.SendMessage(chat.Chat.ChatId, text, parseMode: ParseMode.Html);
             }
             catch (ApiRequestException e) {
-                logger.LogWarning(e.Message);
+                logger.LogWarning("{Message}", e.Message);
             }
         }
     }
@@ -665,29 +663,29 @@ public class PrivateController(
 
         foreach (var chat in chats.Where(chat => chat.Settings.ServantListNotifications)) {
             try {
-                await BotData.Bot.SendTextMessageAsync(chat.Chat.ChatId, text, parseMode: ParseMode.Html);
+                await BotData.Bot.SendMessage(chat.Chat.ChatId, text, parseMode: ParseMode.Html);
             }
             catch (ApiRequestException e) {
-                logger.LogWarning(e.Message);
+                logger.LogWarning("{Message}", e.Message);
             }
         }
     }
 
     private async Task UpdateRayshift(Master master) {
-        var waitingMessage = await BotData.Bot.SendTextMessageAsync(TelegramChat.Id,
+        var waitingMessage = await BotData.Bot.SendMessage(TelegramChat.Id,
             "Aggiornamento della support list, attendere...");
 
         try {
             var response = await RayshiftClient.RequestSupportLookupAsync(ServerToRegion(master.Server), master.FriendCode);
             if (response?.MessageType == MessageCode.Finished) {
-                await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+                await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                     "Aggiornamento completato");
                 await SendSupportListUpdateNotifications(master,
                     $"<i>La Support list del Master {master.Name} è stata aggiornata (via Rayshift)</i>");
             }
         } catch (Exception e) {
             logger.LogError(e, "Error while requesting support lookup of {FriendCode}", master.FriendCode);
-            await BotData.Bot.EditMessageTextAsync(TelegramChat.Id, waitingMessage.MessageId,
+            await BotData.Bot.EditMessageText(TelegramChat.Id, waitingMessage.MessageId,
                 "Errore durante l'ottenimento della nuova support list.");
         }
     }
@@ -710,7 +708,7 @@ public class PrivateController(
             
     }
 
-    private IReplyMarkup BuildSettingsKeyboard(Master master) {
+    private InlineKeyboardMarkup BuildSettingsKeyboard(Master master) {
         var data = new Dictionary<string, string>() {
             {"master", master.Name}
         };
