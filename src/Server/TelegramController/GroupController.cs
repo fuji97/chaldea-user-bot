@@ -1,13 +1,9 @@
 using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Rayshift;
 using Rayshift.Utils;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Server.DbContext;
+using Server.Services;
 using Telegram.Bot;
 using Telegram.Bot.Advanced.Core.Dispatcher.Filters;
 using Telegram.Bot.Advanced.Core.Tools;
@@ -17,27 +13,19 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace Server.TelegramController;
 
 [ChatTypeFilter(ChatType.Group, ChatType.Supergroup)]
-public class GroupController(
-    IMemoryCache cache,
-    IConfiguration configuration,
+public sealed class GroupController(
     ILogger<GroupController> logger,
-    IRayshiftClient rayshiftClient,
-    HttpClient httpClient)
-    : Controller(logger, cache, configuration, rayshiftClient, httpClient) {
-    //private ILogger<InlineController> logger;
-
-    private ChatSettings _cachedChatSettings = null;
-
+    MasterQueryService masters,
+    MasterDisplayService display,
+    ChatSettingsService chatSettingsService)
+    : ChaldeaController(logger) {
     [CommandFilter("list"), MessageTypeFilter(MessageType.Text)]
     public async Task ListMastersInGroups() {
         logger.LogInformation("Ricevuto comando /list in un gruppo");
-        var masters = TelegramContext.RegisteredChats.Where(rc => rc.ChatId == TelegramChat.Id)
-            .Include(rc => rc.Master)
-            .ThenInclude(m => m.User)
-            .Select(rc => $"{rc.Master.Name} by <a href=\"tg://user?id={rc.Master.UserId}\">@{rc.Master.User.Username}</a>");
+        var linked = await masters.ListLinkedAsync(TelegramChat!.Id, CancellationToken);
+        var lines = linked.Select(m => $"{TelegramHtml.Escape(m.MasterName)} by <a href=\"tg://user?id={m.OwnerId}\">@{TelegramHtml.Escape(m.OwnerUsername)}</a>");
         await ReplyTextMessageAsync(
-            "<b>Lista dei Master registrati:</b>\n" +
-            string.Join("\n", masters),
+            "<b>Lista dei Master registrati:</b>\n" + string.Join("\n", lines),
             parseMode: ParseMode.Html,
             disableNotification: true);
     }
@@ -45,67 +33,49 @@ public class GroupController(
     [CommandFilter("link")]
     public async Task LinkMaster() {
         if (MessageCommand.Parameters.Count < 1) {
-            await BotData.Bot.SendMessage(TelegramChat.Id,
-                "Devi passarmi il nome del master che vuoi collegare");
+            await ReplyTextMessageAsync("Devi passarmi il nome del master che vuoi collegare");
+            return;
+        }
+
+        var name = MessageCommand.Parameters.JoinStrings(" ");
+        var master = await masters.GetOwnedAsync(Update.Message!.From!.Id, name, CancellationToken);
+        if (master == null) {
+            await ReplyTextMessageAsync($"Nessun Master trovato con il nome {TelegramHtml.Escape(name)}");
+            return;
+        }
+
+        if (await masters.LinkAsync(master.Id, TelegramChat!.Id, CancellationToken)) {
+            if (await SaveChangesAsync()) {
+                await ReplyTextMessageAsync("Master collegato correttamente");
+            }
         }
         else {
-            var master = TelegramContext.Masters.FirstOrDefault(m =>
-                m.User.Id == Update.Message.From.Id && m.Name == MessageCommand.Parameters.JoinStrings(" "));
-
-            if (master == null) {
-                await BotData.Bot.SendMessage(TelegramChat.Id,
-                    "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
-            }
-            else {
-                var chat = TelegramContext.RegisteredChats.FirstOrDefault(c =>
-                    c.MasterId == master.Id && c.ChatId == TelegramChat.Id);
-
-                if (chat == null) {
-                    TelegramContext.RegisteredChats.Add(new RegisteredChat(master.Id, TelegramChat.Id));
-                    if (await SaveChanges()) {
-                        await BotData.Bot.SendMessage(TelegramChat.Id,
-                            "Master collegato correttamente");                    }
-                }
-                else {
-                    await BotData.Bot.SendMessage(TelegramChat.Id,
-                        "Master già collegato"); 
-                }
-            }
+            await ReplyTextMessageAsync("Master già collegato");
         }
     }
 
     [CommandFilter("unlink")]
     public async Task UnlinkMaster() {
         if (MessageCommand.Parameters.Count < 1) {
-            await BotData.Bot.SendMessage(TelegramChat.Id,
-                "Devi passarmi il nome del master che vuoi scollegare");
+            await ReplyTextMessageAsync("Devi passarmi il nome del master che vuoi scollegare");
+            return;
         }
 
         var name = MessageCommand.Parameters.JoinStrings(" ");
-            
-        var master = await TelegramContext.RegisteredChats
-            .Include(c => c.Master)
-            .Where(c => c.ChatId == TelegramChat.Id)
-            .FirstOrDefaultAsync(c => c.Master.Name == name);
-
-        if (master == null) {
-            await BotData.Bot.SendMessage(TelegramChat.Id,
-                "Nessun Master collegato con il nome " + name);
+        var link = await masters.GetLinkByNameAsync(TelegramChat!.Id, name, CancellationToken);
+        if (link == null) {
+            await ReplyTextMessageAsync($"Nessun Master collegato con il nome {TelegramHtml.Escape(name)}");
+            return;
         }
-        else {
-            if (Update.Message.From.Id != master.Master.UserId) {
-                if (!await IsSenderAdmin()) {
-                    await BotData.Bot.SendMessage(TelegramChat.Id,
-                        "Non puoi scollegare questo utente");
-                    return;
-                }
-            }
-                
-            TelegramContext.RegisteredChats.Remove(master);
-            if (await SaveChanges()) {
-                await BotData.Bot.SendMessage(TelegramChat.Id,
-                    "Master scollegato correttamente"); 
-            }
+
+        if (Update.Message!.From!.Id != link.Master.UserId && !await IsSenderAdminAsync()) {
+            await ReplyTextMessageAsync("Non puoi scollegare questo utente");
+            return;
+        }
+
+        masters.Unlink(link);
+        if (await SaveChangesAsync()) {
+            await ReplyTextMessageAsync("Master scollegato correttamente");
         }
     }
 
@@ -113,89 +83,91 @@ public class GroupController(
     public async Task ShowMasterGroups() {
         if (MessageCommand.Parameters.Count < 1) {
             logger.LogDebug("Ricevuto comando /master senza parametri");
-            await BotData.Bot.SendMessage(TelegramChat.Id,
-                "Devi passarmi il nome del master che vuoi mostrare");
+            await ReplyTextMessageAsync("Devi passarmi il nome del master che vuoi mostrare");
+            return;
         }
-        else {
-            var master = TelegramContext.Masters
-                .Include(m => m.RegisteredChats)
-                .Include(m => m.User).SingleOrDefault(m => m.Name == MessageCommand.Parameters.JoinStrings(" "));
-            if (master == null || master.RegisteredChats.All(c => c.ChatId != TelegramChat.Id)) {
-                await BotData.Bot.SendMessage(TelegramChat.Id,
-                    "Nessun Master trovato con il nome " + MessageCommand.Parameters.JoinStrings(" "));
-            }
-            else {
-                await SendMaster(master);
-            }
+
+        var name = MessageCommand.Parameters.JoinStrings(" ");
+        var master = await masters.GetLinkedWithUserAsync(TelegramChat!.Id, name, CancellationToken);
+        if (master == null) {
+            await ReplyTextMessageAsync($"Nessun Master trovato con il nome {TelegramHtml.Escape(name)}");
+            return;
         }
+
+        await display.ShowAsync(BotData.Bot, TelegramChat, master, CancellationToken);
     }
 
     [CommandFilter("settings")]
     public async Task GroupSettings() {
-        var settings = await GetChatSettings();
-            
         logger.LogInformation("Ricevuto comando /settings in un gruppo");
-        if (await IsSenderAdmin()) {
-            await ReplyTextMessageAsync(BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
+        if (!await IsSenderAdminAsync()) {
+            return;
         }
+
+        var settings = await chatSettingsService.GetOrCreateAsync(TelegramChat!.Id, CancellationToken);
+        if (settings == null) {
+            return;
+        }
+
+        await ReplyTextMessageAsync(BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
     }
 
     #region Comandi inline
 
-    [CallbackCommandFilter(InlineKeyboardCommands.EnableSupportListNotifications, 
+    [CallbackCommandFilter(InlineKeyboardCommands.EnableSupportListNotifications,
         InlineKeyboardCommands.DisableSupportListNotifications,
-        InlineKeyboardCommands.EnableServantListNotifications, 
+        InlineKeyboardCommands.EnableServantListNotifications,
         InlineKeyboardCommands.DisableServantListNotifications)]
     public async Task SettingsCallback() {
-        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery.Id);
-            
-        var originalMessage = Update.CallbackQuery.Message;
-        if (await IsUserAdmin(TelegramChat.Id, Update.CallbackQuery.From.Id)) {
+        await BotData.Bot.AnswerCallbackQuery(Update.CallbackQuery!.Id, cancellationToken: CancellationToken);
 
-            var settings = await GetChatSettings();
+        var originalMessage = Update.CallbackQuery.Message!;
+        if (!await IsUserAdminAsync(TelegramChat!.Id, Update.CallbackQuery.From.Id)) {
+            return;
+        }
 
-            switch (InlineDataWrapper.ParseInlineData(Update.CallbackQuery.Data).Command) {
-                case InlineKeyboardCommands.EnableSupportListNotifications:
-                    settings.SupportListNotifications = true;
-                    break;
-                case InlineKeyboardCommands.DisableSupportListNotifications:
-                    settings.SupportListNotifications = false;
-                    break;
-                case InlineKeyboardCommands.EnableServantListNotifications:
-                    settings.ServantListNotifications = true;
-                    break;
-                case InlineKeyboardCommands.DisableServantListNotifications:
-                    settings.ServantListNotifications = false;
-                    break;
-            }
-                
-            if (await SaveChanges()) {
-                await BotData.Bot.EditMessageText(TelegramChat.Id, originalMessage.MessageId, 
-                    BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings));
-            }
+        var settings = await chatSettingsService.GetOrCreateAsync(TelegramChat.Id, CancellationToken);
+        if (settings == null) {
+            return;
+        }
+
+        switch (InlineDataWrapper.ParseInlineData(Update.CallbackQuery.Data!).Command) {
+            case InlineKeyboardCommands.EnableSupportListNotifications:
+                settings.SupportListNotifications = true;
+                break;
+            case InlineKeyboardCommands.DisableSupportListNotifications:
+                settings.SupportListNotifications = false;
+                break;
+            case InlineKeyboardCommands.EnableServantListNotifications:
+                settings.ServantListNotifications = true;
+                break;
+            case InlineKeyboardCommands.DisableServantListNotifications:
+                settings.ServantListNotifications = false;
+                break;
+        }
+
+        if (await SaveChangesAsync()) {
+            await BotData.Bot.EditMessageText(TelegramChat.Id, originalMessage.MessageId,
+                BuildSettingsMessage(settings), replyMarkup: BuildSettingsKeyboard(settings), cancellationToken: CancellationToken);
         }
     }
 
     #endregion
 
-    private string BuildSettingsMessage(ChatSettings settings) {
-        var message = $"Impostazioni del gruppo {TelegramChat.Title}:\n\n" +
-                      "Notifiche aggiornamenti:\n" +
-                      $"Support list: {(settings.SupportListNotifications ? "abilitate" : "disabilitate")}\n" +
-                      $"Servant list: {(settings.ServantListNotifications ? "abilitate" : "disabilitate")}";
+    private string BuildSettingsMessage(ChatSettings settings) =>
+        $"Impostazioni del gruppo {TelegramHtml.Escape(TelegramChat!.Title)}:\n\n" +
+        "Notifiche aggiornamenti:\n" +
+        $"Support list: {(settings.SupportListNotifications ? "abilitate" : "disabilitate")}\n" +
+        $"Servant list: {(settings.ServantListNotifications ? "abilitate" : "disabilitate")}";
 
-        return message;
-    }
-
-    private InlineKeyboardMarkup BuildSettingsKeyboard(ChatSettings settings) {
-
+    private static InlineKeyboardMarkup BuildSettingsKeyboard(ChatSettings settings) {
         var supportListNotifications = new InlineKeyboardButton {
             Text = settings.SupportListNotifications ? "Disabilita notifiche support list" : "Abilita notifiche support list",
             CallbackData = new InlineDataWrapper(
                 settings.SupportListNotifications ? InlineKeyboardCommands.DisableSupportListNotifications : InlineKeyboardCommands.EnableSupportListNotifications
             ).ToString()
         };
-            
+
         var servantListNotifications = new InlineKeyboardButton {
             Text = settings.ServantListNotifications ? "Disabilita notifiche servant list" : "Abilita notifiche servant list",
             CallbackData = new InlineDataWrapper(
@@ -203,32 +175,7 @@ public class GroupController(
             ).ToString()
         };
 
-        var keyboard = new InlineKeyboardMarkup(new [] {
-            supportListNotifications, servantListNotifications
-        });
-
-        return keyboard; 
-    }
-
-    private async Task<ChatSettings> GetChatSettings() {
-        if (_cachedChatSettings == null) {
-            var chatSettings =
-                await TelegramContext.ChatSettings.FirstOrDefaultAsync(cs => cs.Id == TelegramChat.Id);
-            if (chatSettings != null) {
-                _cachedChatSettings = chatSettings;
-            }
-            else {
-                _cachedChatSettings = new ChatSettings() {
-                    Id = TelegramChat.Id
-                };
-                await TelegramContext.AddAsync(_cachedChatSettings);
-                await SaveChanges();
-
-                _cachedChatSettings = await TelegramContext.ChatSettings.FindAsync(_cachedChatSettings.Id);
-            }
-        }
-
-        return _cachedChatSettings;
+        return new InlineKeyboardMarkup(new[] { supportListNotifications, servantListNotifications });
     }
 
     private static class InlineKeyboardCommands {
