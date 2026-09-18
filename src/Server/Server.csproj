@@ -24,6 +24,8 @@
   <ItemGroup>
     <ProjectReference Include="..\FgoData\FgoData.csproj" />
     <ProjectReference Include="..\Rayshift\Rayshift.csproj" />
-    <ProjectReference Include="C:\Git\personal\Telegram.Bot.Advanced\Telegram.Bot.Advanced\Telegram.Bot.Advanced.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Telegram.Bot.Advanced" Version="9.0.0-alpha" />
   </ItemGroup>
 </Project>
