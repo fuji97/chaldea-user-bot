@@ -38,13 +38,18 @@ After the first successful push to `master` produces an image:
 ## One-time setup, sparkle
 
 ```sh
-git pull                                   # in the existing chaldea-user-bot checkout
+git clone https://github.com/fuji97/chaldea-user-bot.git
+cd chaldea-user-bot
+# Later updates:
+# git pull --ff-only
+
 cp deploy/.env.prod.example deploy/.env.prod
 cp deploy/.env.beta.example deploy/.env.beta
 # fill every value in both files, then:
 chmod 600 deploy/.env.prod deploy/.env.beta
 
-# external volumes must pre-exist; the prod one already does (see cutover below)
+# Docker objects referenced by the stack must pre-exist.
+docker network inspect pangolin
 docker volume create chaldeabot_beta_dbdata
 
 # start the host-wide updater once
@@ -57,7 +62,7 @@ Do this once, in order, to move the live `chaldeabot` stack onto the new
 compose file without losing its Postgres data.
 
 1. Find the live Postgres volume name and put it in `deploy/.env.prod` as
-   `DB_VOLUME`:
+   `DB_VOLUME`. On sparkle the active volume is `chaldeabot_dbdata_16`:
 
    ```sh
    docker volume ls
@@ -104,23 +109,18 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env.beta up -d
 
 ## Reverse proxy (Pangolin) routing
 
-On the existing Pangolin resource that fronts the prod bot, add a second
-target with a prefix path match on `/telegram/chaldeabot_beta` →
-`http://localhost:5001`, leaving the prod target
-(`/telegram/chaldeabot` → `http://localhost:5000`) unchanged. Both stacks
-bind `127.0.0.1` only, exactly like the current prod stack, so neither
-exposes a new public port.
+Pangolin on sparkle runs containerised. Both bot services join its existing
+external `pangolin` Docker network, so no host TCP port is published.
 
-If the installed Pangolin version cannot add a path-matched target on the
-same resource, create a second HTTP resource on its own hostname instead
-(e.g. `chaldeabot-beta.<domain>`) targeting `http://localhost:5001`, and set
-`BASE_URL` in `deploy/.env.beta` to that hostname. `ENDPOINT=chaldeabot_beta`
-stays the same either way.
+- Keep the prod target unchanged: `chaldeabot_bot:5000` with prefix
+  `/telegram/chaldeabot`.
+- Add a second target for the beta path:
+  `chaldeabot_beta_bot:5000` with prefix `/telegram/chaldeabot_beta`.
 
-If Newt runs containerised and cannot reach the host loopback, attach both
-bot services to Newt's existing external Docker network and target them by
-container name (`chaldeabot_bot:5000`, `chaldeabot_beta_bot:5000`) instead of
-host ports.
+`PANGOLIN_NETWORK=pangolin` in each environment file is the shared external
+network name. If the host later uses a different network name, change that
+variable only; the bot targets remain their `${STACK}_bot:5000` container DNS
+names.
 
 ## Release / rollback
 
