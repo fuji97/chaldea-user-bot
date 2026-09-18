@@ -1,41 +1,47 @@
-version: '3.0'
-
 services:
   db:
-    image: postgres:16
+    image: postgres:16@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94  # postgres:16
     environment:
       POSTGRES_USER: chaldeabot
-      POSTGRES_PASSWORD: chaldeabot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - dbdata:/var/lib/postgresql/data
     restart: always
     container_name: chaldeabot_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chaldeabot -d chaldeabot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   chaldeabot:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionString=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=chaldeabot;
+      - ConnectionStrings__Default=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};
       - ASPNETCORE_URLS=http://*:5000
       - USE_FORWARDED_HEADERS=true
       - MIGRATE=true
+      - BotKey=${BOT_KEY:?BOT_KEY is required}
+      - TelegramAdminUserId=${TELEGRAM_ADMIN_USER_ID:?TELEGRAM_ADMIN_USER_ID is required}
+      - Rayshift__ApiKey=${RAYSHIFT_API_KEY:-}
       # - SEED=true
       # - MODE=webhook|polling
       # - BasePath=/telegram/
       # - Endpoint=chaldeabot
       # - WebhookSecret=XXXXXXXXXXXXXXXX
-      # - BotKey=00000:XXXXXXXXXXXXXXXXXXXXX
       # - BaseUrl=https://localhost
-      # - Rayshift__ApiKey=XXXXXXXXXXXXXXXXXXXX
+      # - AdminApi__ApiKey=XXXXXXXXXXXXXXXXXXXX
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     build:
       context: src/
       dockerfile: Server/Dockerfile
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     container_name: chaldeabot_bot
 volumes:
   dbdata:
-    
+
 networks:
   default:
     driver: bridge
