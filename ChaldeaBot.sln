@@ -12,6 +12,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rayshift", "src\Rayshift\Ra
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rayshift.Test", "src\Rayshift.Test\Rayshift.Test.csproj", "{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server.Test", "src\Server.Test\Server.Test.csproj", "{5C91B270-E8A7-4796-AA6E-9F5F68395F8C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,6 +36,10 @@ Global
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1BCF947D-5EB9-4B5E-9280-40758F41A0A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C91B270-E8A7-4796-AA6E-9F5F68395F8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C91B270-E8A7-4796-AA6E-9F5F68395F8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C91B270-E8A7-4796-AA6E-9F5F68395F8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C91B270-E8A7-4796-AA6E-9F5F68395F8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
