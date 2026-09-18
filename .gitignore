@@ -32,9 +32,8 @@ _UpgradeReport_Files/
 Thumbs.db
 Desktop.ini
 .DS_Store
-Server/appsettings.Development.json
-Server/out/
+src/Server/appsettings.Development.json
+src/Server/out/
 .idea/.idea.ChaldeaBot/.idea/discord.xml
-/bin/
-/Server/appsettings.Production.json
+src/Server/appsettings.Production.json
 docker-compose.credentials.yml
