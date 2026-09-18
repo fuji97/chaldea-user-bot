@@ -12,7 +12,8 @@
       "commandName": "Project",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "MODE": "webhook"
+        "MODE": "webhook",
+        "TelegramAdminUserId": "1"
       },
       "commandLineArgs": "--migrate true --seed true",
       "applicationUrl": "https://localhost:8001;http://localhost:8000"
@@ -21,7 +22,8 @@
     "commandName": "Project",
     "environmentVariables": {
       "ASPNETCORE_ENVIRONMENT": "Development",
-      "MODE": "polling"
+      "MODE": "polling",
+      "TelegramAdminUserId": "1"
     },
     "commandLineArgs": "--migrate true --seed true",
     "applicationUrl": "https://localhost:8001;http://localhost:8000"
