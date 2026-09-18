@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -10,136 +9,77 @@ using Rayshift.Models;
 
 namespace Rayshift;
 
-public class RayshiftClient : IRayshiftClient {
+public sealed partial class RayshiftClient : IRayshiftClient {
     public const string BaseAddress = "https://rayshift.io";
     public const string ImagesPath = "static/images/deck-gen/";
-    private const string ApiBaseAddress = "https://rayshift.io/api/v1/";
+    public const string ApiBaseAddress = "https://rayshift.io/api/v1/";
     private const string SupportDecks = "support/decks/";
     private const string SupportLookup = "support/lookup/";
 
-    private const string InQueue = "in queue";
-    private const string Processing = "processing";
     private const string Finished = "finished";
 
     private readonly HttpClient _client;
-    private readonly string? _apiKey;
+    private readonly RayshiftOptions _options;
     private readonly ILogger<RayshiftClient>? _logger;
 
-    public int MaxLookupRequests { get; set; } = 15;
-    public int RequestsInterval { get; set; } = 2000;
-
-    public RayshiftClient(string? apiKey = null, string? baseAddress = null, ILogger<RayshiftClient>? logger = null) {
-        _apiKey = apiKey;
+    public RayshiftClient(HttpClient client, RayshiftOptions options, ILogger<RayshiftClient>? logger = null) {
+        _client = client;
+        _options = options;
         _logger = logger;
-
-        _client = new HttpClient {
-            BaseAddress = baseAddress != null ? new Uri(baseAddress) : new Uri(ApiBaseAddress),
-        };
     }
 
-    public async Task<ApiResponse?> GetSupportDeck(Region region, string friendCode, CancellationToken cancellationToken = default) {
-        if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
-            throw new ArgumentException("Not a valid friend code", nameof(friendCode));
-        }
-            
+    public async Task<ApiResponse> GetSupportDeckAsync(Region region, string friendCode, CancellationToken cancellationToken) {
+        ValidateFriendCode(friendCode);
         var regionStr = Utils.Utils.StringRegion(region);
 
-        var requestUri = $"{SupportDecks}{regionStr}/{friendCode}?random={Guid.NewGuid()}"; // TODO Use something better like Flurl to concatenate parameters
-        var response = await _client.GetAsync(requestUri, cancellationToken);
+        var requestUri = $"{SupportDecks}{regionStr}/{friendCode}?random={Guid.NewGuid()}";
+        using var response = await _client.GetAsync(requestUri, cancellationToken);
+        response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + requestUri, content);
-            
+
         var parsedResponse = DeserializeResponse(content);
+        LogResponse(nameof(GetSupportDeckAsync), response.StatusCode, parsedResponse);
         return parsedResponse;
     }
-        
-    public async Task<ApiResponse?> RequestSupportLookupAsync(Region region, string friendCode, CancellationToken cancellationToken = default) {
-        if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
-            throw new ArgumentException("Not a valid friend code", nameof(friendCode));
-        }
-            
+
+    public async Task<ApiResponse> RequestSupportLookupAsync(Region region, string friendCode, CancellationToken cancellationToken) {
+        ValidateFriendCode(friendCode);
         var regionInt = (int) region;
+        _ = Utils.Utils.StringRegion(region); // validates the region before issuing any request
 
         var query = HttpUtility.ParseQueryString(string.Empty);
-        query["apiKey"] = _apiKey;
+        query["apiKey"] = _options.ApiKey;
         query["region"] = regionInt.ToString();
         query["friendId"] = friendCode;
-        string fullUrl = SupportLookup + '?' + query.ToString();
+        var fullUrl = SupportLookup + '?' + query;
 
-        var response = await _client.GetAsync(fullUrl, cancellationToken);
+        using var response = await _client.GetAsync(fullUrl, cancellationToken);
+        response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
-            
+
         var parsedResponse = DeserializeResponse(content);
-            
+        LogResponse(nameof(RequestSupportLookupAsync), response.StatusCode, parsedResponse);
+
         if (parsedResponse.Status == 200) {
-            return await WaitResponse(fullUrl, parsedResponse);
+            return await WaitResponse(fullUrl, parsedResponse, cancellationToken);
         }
 
         return parsedResponse;
     }
 
-    public async Task<bool> RequestSupportLookup(Region region, string friendCode, Func<ApiResponse?, Task>? callback = null, CancellationToken cancellationToken = default) {
-        if (!Regex.IsMatch(friendCode, "^[0-9]{9}$")) {
-            throw new ArgumentException("Not a valid friend code", nameof(friendCode));
-        }
-            
-        var regionInt = (int) region;
-
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["apiKey"] = _apiKey;
-        query["region"] = regionInt.ToString();
-        query["friendId"] = friendCode;
-        string fullUrl = SupportLookup + '?' + query.ToString();
-
-        var response = await _client.GetAsync(fullUrl, cancellationToken);
-        var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + fullUrl, content);
-            
-        try {
-            var parsedResponse = DeserializeResponse(content);
-            if (parsedResponse.Status == 200) {
-                if (callback != null) {
-#pragma warning disable 4014
-                    WaitAndCallCallback(fullUrl, parsedResponse, callback);
-#pragma warning restore 4014
-                }
-                return true;
-            }
-        }
-        catch (Exception e) {
-            _logger?.LogError(e, "Exception thrown when deserializing response");
-            return false;
-        }
-
-        return false;
-    }
-
-    private async Task WaitAndCallCallback(string query, ApiResponse firstResponse, Func<ApiResponse?, Task> callback) {
-        var response = await WaitResponse(query, firstResponse);
-
-        await callback.Invoke(response);
-    }
-
-    private async Task<ApiResponse?> WaitResponse(string query, ApiResponse firstResponse) {
+    private async Task<ApiResponse> WaitResponse(string query, ApiResponse firstResponse, CancellationToken cancellationToken) {
         var response = firstResponse;
         var currentRequests = 1;
 
-        while (response.Message != Finished && response.Status == 200 && currentRequests < MaxLookupRequests) {
-            Thread.Sleep(RequestsInterval);
+        while (response.Message != Finished && response.Status == 200 && currentRequests < _options.MaxLookupRequests) {
+            await Task.Delay(_options.RequestsInterval, cancellationToken);
 
-            var httpResponse = await _client.GetAsync(query);
-            var content = await httpResponse.Content.ReadAsStringAsync();
-            _logger?.LogDebug("Response from Rayshift [{Url}]: {Content}", _client.BaseAddress + query, content);
-                
-            try {
-                response = DeserializeResponse(content);
-            }
-            catch (Exception e) {
-                _logger?.LogError(e, "Exception thrown when deserializing response");
-                response = null;
-                break;
-            }
+            using var httpResponse = await _client.GetAsync(query, cancellationToken);
+            httpResponse.EnsureSuccessStatusCode();
+            var content = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+
+            response = DeserializeResponse(content);
+            LogResponse(nameof(WaitResponse), httpResponse.StatusCode, response);
 
             currentRequests++;
         }
@@ -147,8 +87,21 @@ public class RayshiftClient : IRayshiftClient {
         return response;
     }
 
+    private void ValidateFriendCode(string friendCode) {
+        if (!FriendCodeRegex().IsMatch(friendCode)) {
+            throw new ArgumentException("Not a valid friend code", nameof(friendCode));
+        }
+    }
+
+    private void LogResponse(string operation, System.Net.HttpStatusCode statusCode, ApiResponse response) {
+        _logger?.LogDebug(
+            "Rayshift {Operation} responded {StatusCode} (status={ApiStatus}, message={ApiMessage})",
+            operation, (int) statusCode, response.Status, response.Message);
+    }
+
     private static ApiResponse DeserializeResponse(string response) {
-        var parsedResponse = JsonSerializer.Deserialize<ApiResponse>(response);
+        var parsedResponse = JsonSerializer.Deserialize<ApiResponse>(response)
+            ?? throw new JsonException("Rayshift returned a null or unparsable response.");
         if (parsedResponse.Response != null) {
             parsedResponse.Response.BaseAddress = BaseAddress;
         }
@@ -156,7 +109,6 @@ public class RayshiftClient : IRayshiftClient {
         return parsedResponse;
     }
 
-    public void Dispose() {
-        _client.Dispose();
-    }
+    [System.Text.RegularExpressions.GeneratedRegex("^[0-9]{9}$")]
+    private static partial System.Text.RegularExpressions.Regex FriendCodeRegex();
 }

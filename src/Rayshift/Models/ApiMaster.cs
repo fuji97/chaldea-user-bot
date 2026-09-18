@@ -35,8 +35,13 @@ public class ApiMaster {
         return Utils.Utils.BuildImageUrl(region, Code!, Guid!, (int) supportLists, (int) flags);
     }
 
-    private string GetImagesBaseUrl() {
+    private string? GetImagesBaseUrl() {
         var str = Decks.FirstOrDefault().Value;
-        return str.Substring(0, str.LastIndexOf('/') + 1);
+        if (string.IsNullOrEmpty(str)) {
+            return null;
+        }
+
+        var slashIndex = str.LastIndexOf('/');
+        return slashIndex < 0 ? null : str.Substring(0, slashIndex + 1);
     }
 }

@@ -7,10 +7,10 @@ public class TimestampConverter : System.Text.Json.Serialization.JsonConverter<D
     public override void Write(
         Utf8JsonWriter writer,
         DateTimeOffset dateTimeValue,
-        JsonSerializerOptions options) => throw new NotImplementedException();
-        
+        JsonSerializerOptions options) => writer.WriteNumberValue(dateTimeValue.ToUnixTimeSeconds());
+
     public override DateTimeOffset Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
-        JsonSerializerOptions options) => Utils.DateTimeFromTimestamp((long) reader.GetInt64());
+        JsonSerializerOptions options) => DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64());
 }
