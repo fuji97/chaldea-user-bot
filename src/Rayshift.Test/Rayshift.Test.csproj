@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
     <UserSecretsId>302d8855-6e0f-40ed-8f75-0993a005e712</UserSecretsId>
     <LangVersion>default</LangVersion>
+    <Nullable>enable</Nullable>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
