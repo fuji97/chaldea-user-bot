@@ -2,6 +2,7 @@
   <PropertyGroup>
     <LangVersion>default</LangVersion>
     <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FgoData</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />

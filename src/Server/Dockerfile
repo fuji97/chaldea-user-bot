@@ -4,7 +4,7 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["Server/Server.csproj", "Server/"]
-COPY ["DataScraper/DataScraper.csproj", "DataScraper/"]
+COPY ["FgoData/FgoData.csproj", "FgoData/"]
 COPY ["Rayshift/Rayshift.csproj", "Rayshift/"]
 RUN dotnet restore "Server/Server.csproj"
 COPY . .

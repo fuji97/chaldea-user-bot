@@ -4,7 +4,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 10.0.40219.1
 
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataScraper", "src\DataScraper\DataScraper.csproj", "{3519C789-3651-457E-8259-7ED2B3DFC2AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FgoData", "src\FgoData\FgoData.csproj", "{3519C789-3651-457E-8259-7ED2B3DFC2AB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "src\Server\Server.csproj", "{45E4D3D1-A1FC-4D6D-A386-6FEE8D1D3A52}"
 EndProject

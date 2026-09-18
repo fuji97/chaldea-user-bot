@@ -22,7 +22,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.18.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DataScraper\DataScraper.csproj" />
+    <ProjectReference Include="..\FgoData\FgoData.csproj" />
     <ProjectReference Include="..\Rayshift\Rayshift.csproj" />
     <ProjectReference Include="C:\Git\personal\Telegram.Bot.Advanced\Telegram.Bot.Advanced\Telegram.Bot.Advanced.csproj" />
   </ItemGroup>
