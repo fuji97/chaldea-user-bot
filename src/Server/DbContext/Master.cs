@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Telegram.Bot.Advanced.DbContexts;
@@ -17,7 +18,7 @@ public class Master
     public string ServantList { get; set; }
     public MasterServer Server { get; set; }
     public MasterStatus Status { get; set; }
-    public ICollection<RegisteredChat> RegisteredChats { get; set; }
+    public ICollection<RegisteredChat> RegisteredChats { get; set; } = new List<RegisteredChat>();
     [ForeignKey("UserId")]
     public TelegramChat User { get; set; }
         
@@ -27,6 +28,7 @@ public class Master
 
     public Master(TelegramChat user, string name, string friendCode, MasterServer server, string support = null, string servant = null, bool useRayshift = false,
         MasterStatus status = MasterStatus.Enabled) {
+        ArgumentNullException.ThrowIfNull(user);
         User = user;
         UserId = user.Id;
         Name = name;
@@ -37,21 +39,6 @@ public class Master
         Status = status;
         UseRayshift = useRayshift;
     }
-
-    /*
-    public void UpdateData(string key, string value)
-    {
-        var data = Data.FirstOrDefault(d => d.Key == key);
-        if (data != null)
-        {
-            data.Value = value;
-        }
-        else
-        {
-            Data.Add(new Data(this, key, value));
-        }
-    }
-    */
 }
 
 public enum MasterStatus {
