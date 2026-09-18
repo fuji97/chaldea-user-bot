@@ -1,11 +1,10 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Server.DbContext;
+using Server.Security;
 using Telegram.Bot;
 using Telegram.Bot.Advanced.Core.Holder;
 using Telegram.Bot.Advanced.Extensions;
@@ -13,35 +12,38 @@ using Telegram.Bot.Advanced.Extensions;
 namespace Server.Controllers;
 
 [ApiController]
-[Route("[controller]")]
-public class AdminController(ITelegramHolder holder, IConfiguration configuration, IOptions<TelegramWebhookOptions> webhookOptions) : ControllerBase {
-    // GET
-    [HttpGet("set_webhook/{endpoint}")]
+[Route("admin")]
+[Authorize(AuthenticationSchemes = AdminApiAuthentication.Scheme)]
+public sealed class AdminController(ITelegramHolder holder, IOptions<TelegramWebhookOptions> webhookOptions, MasterContext context) : ControllerBase {
+    [HttpPost("webhook/{endpoint}")]
     public async Task<IActionResult> SetWebhook([FromRoute] string endpoint) {
-        List<string> webhooks = new List<string>();
-        var bot = holder.FirstOrDefault(b => b.Endpoint == endpoint);
-            
-        if (bot == null) 
-            return Ok(webhooks);
-            
-        await bot.Bot.SetWebhook(configuration["BaseUrl"] + configuration["BasePath"] +
-                                      bot.Endpoint, secretToken: webhookOptions.Value.SecretToken);
-        webhooks.Add((await bot.Bot.GetWebhookInfo()).Url);
-        return Ok(webhooks);
-    }
-        
-    [HttpGet("remove_webhook/{endpoint}")]
-    public async Task<IActionResult> RemoveWebhook([FromRoute] string endpoint) {
-        var bot = holder.FirstOrDefault(b => b.Endpoint == endpoint);
-        if (bot != null) {
-            await bot.Bot.DeleteWebhook();
+        if (!holder.TryGet(endpoint, out var bot)) {
+            return NotFound();
         }
-        return Ok("Done");
+
+        var options = webhookOptions.Value;
+        if (options.BaseUri is null || string.IsNullOrEmpty(options.SecretToken)) {
+            return Conflict("Webhook transport is not configured.");
+        }
+
+        var url = WebhookUrlBuilder.Build(options.BaseUri, bot.BasePath, bot.Endpoint);
+        await bot.Bot.SetWebhook(url.AbsoluteUri, secretToken: options.SecretToken, cancellationToken: HttpContext.RequestAborted);
+        return Ok(url.AbsoluteUri);
     }
 
-    [HttpGet("migrate")]
-    public async Task<IActionResult> ApplyMigration([FromServices] MasterContext context) {
-        await context.Database.MigrateAsync();
-        return Ok("Done");
+    [HttpDelete("webhook/{endpoint}")]
+    public async Task<IActionResult> RemoveWebhook([FromRoute] string endpoint) {
+        if (!holder.TryGet(endpoint, out var bot)) {
+            return NotFound();
+        }
+
+        await bot.Bot.DeleteWebhook(cancellationToken: HttpContext.RequestAborted);
+        return Ok();
+    }
+
+    [HttpPost("migrate")]
+    public async Task<IActionResult> ApplyMigration() {
+        await context.Database.MigrateAsync(HttpContext.RequestAborted);
+        return Ok();
     }
 }
