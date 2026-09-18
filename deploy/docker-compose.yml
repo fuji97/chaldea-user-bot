@@ -1,0 +1,56 @@
+# Deployed stack for sparkle. One file, two environments:
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env.prod up -d
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env.beta up -d
+# Images are never built here: Watchtower (deploy/watchtower) replaces the bot
+# container when the followed GHCR tag (stable/beta) points at a new digest.
+name: ${STACK}
+
+services:
+  db:
+    image: postgres:16@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94  # postgres:16
+    container_name: ${STACK:?STACK is required}_db
+    environment:
+      POSTGRES_USER: chaldeabot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chaldeabot -d chaldeabot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  chaldeabot:
+    image: ghcr.io/fuji97/chaldea-user-bot:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: ${STACK}_bot
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://*:5000
+      - ConnectionStrings__Default=Server=db;Port=5432;Database=chaldeabot;User Id=chaldeabot;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};
+      - USE_FORWARDED_HEADERS=true
+      - MIGRATE=true
+      - SEED=false
+      - MODE=webhook
+      - BasePath=${BASE_PATH:-/telegram/}
+      - Endpoint=${ENDPOINT:?ENDPOINT is required}
+      - BaseUrl=${BASE_URL:?BASE_URL is required}
+      - WebhookSecret=${WEBHOOK_SECRET:?WEBHOOK_SECRET is required}
+      - BotKey=${BOT_KEY:?BOT_KEY is required}
+      - TelegramAdminUserId=${TELEGRAM_ADMIN_USER_ID:?TELEGRAM_ADMIN_USER_ID is required}
+      - Rayshift__ApiKey=${RAYSHIFT_API_KEY:-}
+      - AdminApi__ApiKey=${ADMIN_API_KEY:-}
+      - Logging__LogLevel__Default=${LOG_LEVEL_DEFAULT:-Warning}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:?HTTP_PORT is required}:5000"
+
+volumes:
+  dbdata:
+    external: true
+    name: ${DB_VOLUME:?DB_VOLUME is required}

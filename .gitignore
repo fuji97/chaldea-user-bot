@@ -36,4 +36,8 @@ src/Server/appsettings.Development.json
 src/Server/out/
 .idea/.idea.ChaldeaBot/.idea/discord.xml
 src/Server/appsettings.Production.json
+
+deploy/.env
+deploy/.env.*
+!deploy/.env.*.example
 docker-compose.credentials.yml
